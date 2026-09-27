@@ -12,15 +12,11 @@ No-login public video site. Visitors watch a **5-second teaser**, pay **TZS 2,00
 
 ## Admin (Studio)
 
-The bottom-left **Admin** button opens a **branded login** (same teal/white UI as the site — not the default Django admin).
+Bottom-left **Admin** opens branded login at `/studio/login/` (same teal/white UI — not Django’s default admin).
 
-After login, admins can:
+Admins can upload/delete videos, view payments, and add other admins.
 
-- Upload / delete videos
-- View all payments
-- Add other admins
-
-### Default credentials
+### Login credentials
 
 | Field | Value |
 |--------|--------|
@@ -28,15 +24,9 @@ After login, admins can:
 | Username | `admin` |
 | Password | `admin123` |
 
-Create the account after migrate:
+The account is **created automatically** on every deploy (`seed_demo` in build + start). No Shell required.
 
-```bash
-python manage.py seed_demo
-```
-
-On Render Shell, run the same command once after deploy.
-
-**Change this password** before any public use.
+**Change this password** before public use (or add a new admin and stop using the default).
 
 ## Run locally
 
@@ -51,8 +41,6 @@ python manage.py runserver
 - Site: http://127.0.0.1:8000/
 - Studio: http://127.0.0.1:8000/studio/login/ — `admin` / `admin123`
 
-With `SNIPPE_MOCK=true` (default), payments use **Confirm demo payment**.
-
 ## Snippe live keys
 
 ```
@@ -61,14 +49,13 @@ SNIPPE_API_KEY=snp_...
 SNIPPE_WEBHOOK_URL=https://your-domain/webhooks/snippe/
 ```
 
-Docs: https://docs.snippe.sh/
-
 ## Render
 
-- Build: `./build.sh`
-- Start: `python manage.py migrate --no-input && gunicorn awayvideos.wsgi:application`
-- Then in Shell: `python manage.py seed_demo`
+- Build runs: migrate + `seed_demo`
+- Start runs: migrate + `seed_demo` + gunicorn
 
-## Branding
+If the dashboard **Start Command** was set manually, use:
 
-**AWAY Videos** — teal + gold / white UI.
+```text
+python manage.py migrate --no-input && python manage.py seed_demo && gunicorn awayvideos.wsgi:application
+```
