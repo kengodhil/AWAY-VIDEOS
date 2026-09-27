@@ -1,38 +1,57 @@
 # AWAY Videos
 
-No-login video site. Visitors watch a **5-second teaser**, pay **TZS 2,000** via Snippe (mobile money USSD) to unlock the full video for this browser session, and optionally pay **TZS 1,000** to download.
+No-login public video site. Visitors watch a **5-second teaser**, pay **TZS 2,000** via Snippe (mobile money USSD) to unlock the full video for this browser session, and optionally pay **TZS 1,000** to download.
 
-## Flow
+## Public flow
 
-1. Open the home page — videos in a responsive grid (2 columns on phones).
+1. Home page — video grid (2 columns on phones).
 2. Each card autoplays a muted 5s teaser.
-3. **Watch now** → enter phone number → USSD prompt → unlock full player.
-4. On the player, bottom-right **download** icon → second payment (TZS 1,000) → file downloads.
-5. Closing the browser / ending the session means paying again to watch.
+3. **Watch now** → phone number → USSD → full player.
+4. Player download icon → pay TZS 1,000 → download.
+5. New browser session → pay again to watch.
 
-Admin only: `/admin/` to upload videos (not shown on the public site).
+## Admin (Studio)
+
+The bottom-left **Admin** button opens a **branded login** (same teal/white UI as the site — not the default Django admin).
+
+After login, admins can:
+
+- Upload / delete videos
+- View all payments
+- Add other admins
+
+### Default credentials
+
+| Field | Value |
+|--------|--------|
+| URL | `/studio/login/` |
+| Username | `admin` |
+| Password | `admin123` |
+
+Create the account after migrate:
+
+```bash
+python manage.py seed_demo
+```
+
+On Render Shell, run the same command once after deploy.
+
+**Change this password** before any public use.
 
 ## Run locally
 
 ```bash
-python -m venv .venv
-# PowerShell if scripts blocked:
-#   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 pip install -r requirements.txt
 copy .env.example .env
-# Fresh DB after redesign:
-del db.sqlite3
 python manage.py migrate
 python manage.py seed_demo
 python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000/
+- Site: http://127.0.0.1:8000/
+- Studio: http://127.0.0.1:8000/studio/login/ — `admin` / `admin123`
 
-- Public site: no login
-- Admin: http://127.0.0.1:8000/admin/ — `admin` / `admin123`
-
-With `SNIPPE_MOCK=true` (default), payment screens have a **Confirm demo payment** button.
+With `SNIPPE_MOCK=true` (default), payments use **Confirm demo payment**.
 
 ## Snippe live keys
 
@@ -47,9 +66,9 @@ Docs: https://docs.snippe.sh/
 ## Render
 
 - Build: `./build.sh`
-- Start: `gunicorn awayvideos.wsgi:application`
-- Set `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `SNIPPE_*` as needed
+- Start: `python manage.py migrate --no-input && gunicorn awayvideos.wsgi:application`
+- Then in Shell: `python manage.py seed_demo`
 
 ## Branding
 
-Site name is **AWAY Videos** everywhere (teal + gold).
+**AWAY Videos** — teal + gold / white UI.
