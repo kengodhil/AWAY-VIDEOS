@@ -2,21 +2,10 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+USE_CLOUDINARY = getattr(settings, "USE_CLOUDINARY", False)
 
-def _video_storage():
-    if getattr(settings, "USE_CLOUDINARY", False):
-        from cloudinary_storage.storage import VideoMediaCloudinaryStorage
-
-        return VideoMediaCloudinaryStorage()
-    return None
-
-
-def _image_storage():
-    if getattr(settings, "USE_CLOUDINARY", False):
-        from cloudinary_storage.storage import MediaCloudinaryStorage
-
-        return MediaCloudinaryStorage()
-    return None
+if USE_CLOUDINARY:
+    from cloudinary.models import CloudinaryField
 
 
 class Video(models.Model):
@@ -30,15 +19,25 @@ class Video(models.Model):
         default=1000,
         help_text="Price to download video (TZS)",
     )
-    thumbnail = models.ImageField(
-        upload_to="thumbnails/",
-        blank=True,
-        storage=_image_storage,
-    )
-    video_file = models.FileField(
-        upload_to="videos/",
-        storage=_video_storage,
-    )
+    if USE_CLOUDINARY:
+        thumbnail = CloudinaryField(
+            "thumbnail",
+            folder="away-videos/thumbnails",
+            blank=True,
+            null=True,
+            resource_type="image",
+        )
+        video_file = CloudinaryField(
+            "video",
+            folder="away-videos/videos",
+            resource_type="video",
+            blank=False,
+            null=True,
+        )
+    else:
+        thumbnail = models.ImageField(upload_to="thumbnails/", blank=True)
+        video_file = models.FileField(upload_to="videos/")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -48,8 +47,50 @@ class Video(models.Model):
         return self.title
 
     @property
+    def video_url(self) -> str:
+        """Playable URL for HTML5 <video src>."""
+        if not self.video_file:
+            return ""
+        if USE_CLOUDINARY:
+            try:
+                return self.video_file.build_url(resource_type="video", secure=True)
+            except Exception:
+                # Fallback: CloudinaryField string / public_id
+                name = str(self.video_file)
+                if name.startswith("http"):
+                    return name
+                cloud = getattr(settings, "CLOUDINARY_CLOUD_NAME", "")
+                if cloud and name:
+                    return f"https://res.cloudinary.com/{cloud}/video/upload/{name}"
+                return ""
+        try:
+            return self.video_file.url
+        except Exception:
+            return ""
+
+    @property
+    def thumbnail_url(self) -> str:
+        if not self.thumbnail:
+            return ""
+        if USE_CLOUDINARY:
+            try:
+                return self.thumbnail.build_url(resource_type="image", secure=True)
+            except Exception:
+                name = str(self.thumbnail)
+                if name.startswith("http"):
+                    return name
+                cloud = getattr(settings, "CLOUDINARY_CLOUD_NAME", "")
+                if cloud and name:
+                    return f"https://res.cloudinary.com/{cloud}/image/upload/{name}"
+                return ""
+        try:
+            return self.thumbnail.url
+        except Exception:
+            return ""
+
+    @property
     def has_playable_file(self) -> bool:
-        return bool(self.video_file and self.video_file.name)
+        return bool(self.video_url)
 
 
 class Payment(models.Model):
