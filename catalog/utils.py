@@ -2,8 +2,11 @@ from .models import Payment
 
 
 def ensure_session(request):
+    """Ensure the visitor has a session key (cookie-based; no DB required)."""
     if not request.session.session_key:
-        request.session.create()
+        # Force a key to be assigned without requiring django_session table
+        request.session["_away_init"] = True
+        request.session.save()
     return request.session.session_key
 
 
