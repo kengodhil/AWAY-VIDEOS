@@ -88,6 +88,7 @@ h2.studio-section {
   aspect-ratio: 16 / 10;
   background: var(--teal-dark);
   overflow: hidden;
+  cursor: pointer;
 }
 .teaser-wrap video,
 .teaser-wrap img,
@@ -104,17 +105,6 @@ h2.studio-section {
   color: var(--gold);
   font-size: 1.6rem;
   font-weight: 800;
-}
-.teaser-badge {
-  position: absolute;
-  left: .4rem;
-  top: .4rem;
-  background: rgba(7, 56, 53, 0.85);
-  color: var(--gold);
-  font-size: .65rem;
-  font-weight: 700;
-  padding: .2rem .45rem;
-  border-radius: 999px;
 }
 .v-card-body {
   padding: .65rem .7rem .8rem;
@@ -194,6 +184,24 @@ h2.studio-section {
   margin: .4rem 0 1rem;
 }
 .stack { display: grid; gap: .9rem; }
+.phone-field { display: grid; gap: .35rem; }
+.wallet-logos {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .35rem;
+  margin-top: -.25rem;
+  padding: .15rem 0 .25rem;
+}
+.wallet-logos img {
+  height: 16px;
+  width: auto;
+  max-width: 22%;
+  object-fit: contain;
+  flex: 1 1 0;
+  opacity: .95;
+}
 label { display: grid; gap: .35rem; font-weight: 600; font-size: .92rem; }
 input, textarea, select {
   width: 100%;
@@ -277,7 +285,6 @@ input, textarea, select {
   color: var(--gold);
 }
 
-/* Studio dashboard */
 .studio-head {
   display: flex;
   flex-wrap: wrap;
@@ -366,4 +373,5 @@ input, textarea, select {
   .btn-watch { font-size: .75rem; padding: .5rem; }
   .price-tag { font-size: .78rem; }
   .admin-btn { left: .75rem; bottom: .75rem; font-size: .75rem; padding: .4rem .75rem; }
+  .wallet-logos img { height: 14px; }
 }
