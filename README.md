@@ -1,4 +1,4 @@
-# Adu Reel
+# AWAY VIDEOS Reel
 
 Simple Django website for paid videos. A viewer enters a Tanzania mobile number. The app sends a Selcom wallet-payment prompt. After a successful payment, the video unlocks.
 
