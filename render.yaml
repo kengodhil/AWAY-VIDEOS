@@ -13,5 +13,5 @@ services:
         value: ".onrender.com"
       - key: PYTHON_VERSION
         value: "3.12.0"
-      - key: SELCOM_MOCK
+      - key: SNIPPE_MOCK
         value: "true"

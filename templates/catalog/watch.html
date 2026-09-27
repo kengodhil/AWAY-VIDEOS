@@ -1,13 +1,39 @@
 {% extends "catalog/base.html" %}
-{% block title %}Watch {{ video.title }}{% endblock %}
+{% block title %}{{ video.title }} · AWAY Videos{% endblock %}
 {% block content %}
-<section>
-  <p class="eyebrow">Unlocked</p>
-  <h1>{{ video.title }}</h1>
-  <video class="player" controls playsinline>
-    <source src="{{ video.video_file.url }}">
-    Your browser cannot play this video.
-  </video>
-  <p>{{ video.description }}</p>
+<section class="watch-shell">
+  <div class="player-frame">
+    <video
+      class="player"
+      controls
+      playsinline
+      controlslist="nodownload"
+      {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}
+    >
+      <source src="{{ video.video_file.url }}" type="video/mp4">
+      Your browser does not support video playback.
+    </video>
+    <div class="player-actions">
+      {% if can_download %}
+      <a class="icon-btn" href="{% url 'download_video' video.pk %}" title="Download" aria-label="Download">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>
+        </svg>
+      </a>
+      {% else %}
+      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}" title="Pay TZS {{ video.download_price }} to download" aria-label="Download">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>
+        </svg>
+        <span class="icon-label">TZS {{ video.download_price|floatformat:0 }}</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="watch-meta">
+    <h1>{{ video.title }}</h1>
+    {% if video.description %}<p class="muted">{{ video.description }}</p>{% endif %}
+    <a class="btn btn-ghost" href="{% url 'home' %}">← More videos</a>
+  </div>
 </section>
 {% endblock %}

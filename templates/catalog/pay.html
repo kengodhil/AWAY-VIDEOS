@@ -1,21 +1,28 @@
 {% extends "catalog/base.html" %}
-{% block title %}Pay for {{ video.title }}{% endblock %}
+{% block title %}Pay · {{ video.title }} · AWAY Videos{% endblock %}
 {% block content %}
-<section class="card narrow">
-  <p class="eyebrow">Step 2 of 3</p>
-  <h1>Pay with your phone</h1>
-  <p>You are paying <strong>TZS {{ video.price }}</strong> for <strong>{{ video.title }}</strong>.</p>
-  <form method="post" class="stack">{% csrf_token %}
-    {% for field in form %}
+<section class="pay-shell">
+  <div class="card pay-card">
+    <p class="eyebrow">{% if is_download %}Download{% else %}Watch full video{% endif %}</p>
+    <h1>{{ video.title }}</h1>
+    <p class="price">TZS {{ amount|floatformat:0 }}</p>
+    <p class="muted">
+      Enter the phone number linked to M-Pesa, Airtel Money, Mixx by Yas, or HaloPesa.
+      You will get a USSD prompt on your phone.
+    </p>
+    <form method="post" class="stack">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
       <label>
-        {{ field.label }}
-        {{ field }}
-        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-        {{ field.errors }}
+        {{ form.phone.label }}
+        {{ form.phone }}
+        {{ form.phone.errors }}
       </label>
-    {% endfor %}
-    {{ form.non_field_errors }}
-    <button class="btn" type="submit">Send payment prompt</button>
-  </form>
+      <button class="btn" type="submit">
+        {% if is_download %}Pay &amp; download{% else %}Pay &amp; watch{% endif %}
+      </button>
+    </form>
+    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
+  </div>
 </section>
 {% endblock %}
