@@ -99,15 +99,17 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGIN_URL = "/studio/login/"
+LOGIN_REDIRECT_URL = "/studio/"
+LOGOUT_REDIRECT_URL = "/"
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Snippe payments (https://docs.snippe.sh/)
 SNIPPE_BASE_URL = os.getenv("SNIPPE_BASE_URL", "https://api.snippe.sh")
 SNIPPE_API_KEY = os.getenv("SNIPPE_API_KEY", "")
 SNIPPE_WEBHOOK_URL = os.getenv("SNIPPE_WEBHOOK_URL", "")
 SNIPPE_MOCK = os.getenv("SNIPPE_MOCK", "true").lower() == "true"
 
-# Cookie sessions: no django_session table needed (avoids Render SQLite migrate gaps)
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
 SESSION_SAVE_EVERY_REQUEST = True
