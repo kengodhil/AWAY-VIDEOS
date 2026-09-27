@@ -10,7 +10,6 @@
 <body>
   <header class="topbar">
     <a class="brand" href="{% url 'home' %}">AWAY Videos</a>
-    <span class="tagline">Teaser free · Pay to watch</span>
   </header>
 
   {% if messages %}
@@ -25,8 +24,10 @@
     {% block content %}{% endblock %}
   </main>
 
+  <a class="admin-btn" href="/admin/">Admin</a>
+
   <footer class="site-footer">
-    <p>© {% now "Y" %} AWAY Videos · M-Pesa · Airtel Money · Mixx · HaloPesa</p>
+    <p>© {% now "Y" %} AWAY Videos</p>
   </footer>
   {% block scripts %}{% endblock %}
 </body>
