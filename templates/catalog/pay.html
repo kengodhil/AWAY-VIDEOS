@@ -1,10 +1,9 @@
 {% extends "catalog/base.html" %}
 {% load static %}
-{% block title %}Pay · {{ video.title }} · AWAY Videos{% endblock %}
+{% block title %}{{ video.title }} · AWAY Videos{% endblock %}
 {% block content %}
 <section class="pay-shell">
   <div class="card pay-card">
-    <p class="eyebrow">{% if is_download %}Download{% else %}Watch full video{% endif %}</p>
     <h1 class="pay-title">{{ video.title }}</h1>
     <p class="price">TZS {{ amount|floatformat:0 }}</p>
     <p class="pay-cta">LIPIA UONE VIDEO YOTE</p>
@@ -19,17 +18,16 @@
         </div>
         {{ form.phone.errors }}
       </div>
-      <div class="wallet-logos" aria-label="Supported mobile wallets">
+      <div class="wallet-logos">
         <img src="{% static 'img/wallets/vodacom.svg' %}" alt="Vodacom" height="28">
         <img src="{% static 'img/wallets/airtel.svg' %}" alt="Airtel" height="28">
         <img src="{% static 'img/wallets/tigo.svg' %}" alt="Tigo" height="28">
         <img src="{% static 'img/wallets/halotel.svg' %}" alt="Halotel" height="28">
       </div>
       <button class="btn" type="submit">
-        {% if is_download %}Pay &amp; download{% else %}Pay &amp; watch{% endif %}
+        {% if is_download %}LIPA{% else %}LIPA{% endif %}
       </button>
     </form>
-    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
   </div>
 </section>
 {% endblock %}

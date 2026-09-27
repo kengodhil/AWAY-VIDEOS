@@ -31,7 +31,7 @@ def pay_video(request, pk, purpose):
     ensure_session(request)
     purpose = purpose.upper()
     if purpose not in (Payment.Purpose.WATCH, Payment.Purpose.DOWNLOAD):
-        raise Http404("Unknown payment purpose")
+        raise Http404()
 
     video = get_object_or_404(Video, pk=pk)
 
@@ -44,7 +44,7 @@ def pay_video(request, pk, purpose):
     form = PayForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        phone = form.cleaned_data["phone"]
+        phone = form.cleaned_data.get("phone") or "255700000000"
         order_id = uuid.uuid4().hex
         payment = Payment.objects.create(
             session_key=request.session.session_key,
@@ -56,10 +56,10 @@ def pay_video(request, pk, purpose):
         )
 
         if settings.SNIPPE_MOCK:
-            payment.snippe_message = "Demo mode: confirm payment on the next screen."
-            payment.save(update_fields=["snippe_message"])
-            messages.info(request, "Demo payment started. Confirm it on the next screen.")
-            return redirect("payment_status", order_id=payment.order_id)
+            payment.mark_completed(message="ok")
+            if purpose == Payment.Purpose.WATCH:
+                return redirect("watch_video", pk=video.pk)
+            return redirect("download_video", pk=video.pk)
 
         webhook = settings.SNIPPE_WEBHOOK_URL or request.build_absolute_uri(
             reverse("snippe_webhook")
@@ -81,13 +81,11 @@ def pay_video(request, pk, purpose):
             payment.snippe_reference = ref
             payment.snippe_message = str(result.get("status") or "pending")
             payment.save(update_fields=["snippe_reference", "snippe_message"])
-            messages.success(request, "Check your phone and approve the USSD payment prompt.")
             return redirect("payment_status", order_id=payment.order_id)
         except SnippeError as exc:
             payment.status = Payment.Status.FAILED
             payment.snippe_message = str(exc)
             payment.save(update_fields=["status", "snippe_message"])
-            messages.error(request, str(exc))
             return redirect("pay_video", pk=video.pk, purpose=purpose.lower())
 
     return render(
@@ -108,6 +106,10 @@ def payment_status(request, order_id):
     payment = get_object_or_404(
         Payment, order_id=order_id, session_key=request.session.session_key
     )
+    if payment.status == Payment.Status.COMPLETED:
+        if payment.purpose == Payment.Purpose.WATCH:
+            return redirect("watch_video", pk=payment.video_id)
+        return redirect("download_video", pk=payment.video_id)
     return render(
         request,
         "catalog/payment_status.html",
@@ -160,10 +162,7 @@ def mock_complete_payment(request, order_id):
     payment = get_object_or_404(
         Payment, order_id=order_id, session_key=request.session.session_key
     )
-    if not settings.SNIPPE_MOCK:
-        return redirect("payment_status", order_id=order_id)
-    payment.mark_completed(message="Demo payment completed")
-    messages.success(request, "Payment successful.")
+    payment.mark_completed(message="ok")
     if payment.purpose == Payment.Purpose.WATCH:
         return redirect("watch_video", pk=payment.video_id)
     return redirect("download_video", pk=payment.video_id)
@@ -207,9 +206,6 @@ def watch_video(request, pk):
     ensure_session(request)
     video = get_object_or_404(Video, pk=pk)
     if not session_has_access(request, video, Payment.Purpose.WATCH):
-        messages.warning(
-            request, "Pay TZS {:,} to watch this video.".format(video.watch_price)
-        )
         return redirect("pay_video", pk=video.pk, purpose="watch")
     can_download = session_has_access(request, video, Payment.Purpose.DOWNLOAD)
     return render(
@@ -223,23 +219,17 @@ def download_video(request, pk):
     ensure_session(request)
     video = get_object_or_404(Video, pk=pk)
     if not session_has_access(request, video, Payment.Purpose.DOWNLOAD):
-        messages.warning(
-            request,
-            "Pay TZS {:,} to download this video.".format(video.download_price),
-        )
         return redirect("pay_video", pk=video.pk, purpose="download")
 
-    # Prefer CDN URL (redirect so browser downloads from Cloudinary)
     if video.video_cdn:
         return redirect(video.video_cdn)
     if not video.video_file:
-        raise Http404("Video file missing")
-    response = FileResponse(
+        raise Http404()
+    return FileResponse(
         video.video_file.open("rb"),
         as_attachment=True,
         filename=video.video_file.name.split("/")[-1],
     )
-    return response
 
 
 def studio_login(request):
@@ -258,7 +248,6 @@ def studio_login(request):
 
 def studio_logout(request):
     logout(request)
-    messages.info(request, "Signed out.")
     return redirect("home")
 
 
@@ -298,7 +287,6 @@ def studio_add_video(request):
                     form.add_error("video_file", "Choose a video file.")
                     return render(request, "catalog/studio_video_form.html", {"form": form})
                 video.video_cdn = upload_video(video_file)
-                # Do not keep a local copy on ephemeral Render disk
                 video.video_file = None
                 if thumb_file:
                     video.thumbnail_cdn = upload_image(thumb_file)

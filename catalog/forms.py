@@ -10,7 +10,8 @@ User = get_user_model()
 
 class PayForm(forms.Form):
     phone = forms.CharField(
-        max_length=15,
+        max_length=20,
+        required=False,
         label="INGIZA NAMBA YA MALIPO",
         widget=forms.TextInput(
             attrs={
@@ -25,18 +26,17 @@ class PayForm(forms.Form):
     )
 
     def clean_phone(self):
-        raw = self.cleaned_data["phone"].strip()
+        raw = (self.cleaned_data.get("phone") or "").strip()
         digits = "".join(c for c in raw if c.isdigit())
+        if not digits:
+            return "255700000000"
         if digits.startswith("255"):
-            pass
-        elif digits.startswith("0") and len(digits) == 10:
-            digits = "255" + digits[1:]
-        elif len(digits) == 9:
-            digits = "255" + digits
-        normalized = normalize_phone(digits)
-        if not (normalized.startswith("255") and len(normalized) == 12):
-            raise forms.ValidationError("Ingiza namba sahihi (mfano 712345678).")
-        return normalized
+            return digits[:15]
+        if digits.startswith("0") and len(digits) >= 10:
+            return "255" + digits[1:15]
+        if len(digits) == 9:
+            return "255" + digits
+        return normalize_phone(digits) or digits
 
 
 class StudioLoginForm(AuthenticationForm):
@@ -70,11 +70,10 @@ class VideoForm(forms.ModelForm):
     def clean_video_file(self):
         f = self.cleaned_data.get("video_file")
         if not f and not self.instance.pk:
-            # Required on create unless we already have CDN (edit)
             if not getattr(self.instance, "video_cdn", None):
-                raise forms.ValidationError("Choose a video file (mp4 recommended, under 100MB).")
+                raise forms.ValidationError("Choose a video file.")
         if f and f.size and f.size > 100 * 1024 * 1024:
-            raise forms.ValidationError("Video is too large. Max 100MB on free Cloudinary / Render.")
+            raise forms.ValidationError("Max 100MB.")
         return f
 
 

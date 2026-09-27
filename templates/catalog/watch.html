@@ -8,25 +8,17 @@
       {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}>
       <source src="{{ video.video_url }}" type="video/mp4">
     </video>
-    {% else %}
-    <p class="muted center" style="padding:2rem">Video file is missing. Re-upload in Studio.</p>
     {% endif %}
     <div class="player-actions">
       {% if can_download %}
-      <a class="icon-btn" href="{% url 'download_video' video.pk %}" title="Download">
-        <span class="icon-label">⬇ Download</span>
-      </a>
+      <a class="icon-btn" href="{% url 'download_video' video.pk %}"><span class="icon-label">⬇</span></a>
       {% else %}
-      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}" title="Pay to download">
-        <span class="icon-label">⬇ Download</span>
-      </a>
+      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}"><span class="icon-label">⬇</span></a>
       {% endif %}
     </div>
   </div>
   <div class="watch-meta">
     <h1>{{ video.title }}</h1>
-    {% if video.description %}<p class="muted">{{ video.description }}</p>{% endif %}
-    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
   </div>
 </section>
 {% endblock %}

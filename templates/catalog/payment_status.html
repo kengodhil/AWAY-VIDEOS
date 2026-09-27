@@ -3,23 +3,14 @@
 {% block content %}
 <section class="pay-shell">
   <div class="card pay-card center">
-    <p class="eyebrow">Payment status</p>
     <h1>{{ payment.video.title }}</h1>
     <p class="status-pill" id="status-pill">{{ payment.status }}</p>
-    <p class="muted" id="status-msg">{{ payment.snippe_message }}</p>
-    <p class="muted">Amount: <strong>TZS {{ payment.amount|floatformat:0 }}</strong></p>
-
     {% if mock and payment.status == "PENDING" %}
     <form method="post" action="{% url 'mock_complete_payment' payment.order_id %}">
       {% csrf_token %}
-      <button class="btn" type="submit">Confirm demo payment</button>
+      <button class="btn" type="submit">LIPA</button>
     </form>
-    <p class="muted small-note">Demo mode — no real USSD. Click to simulate success.</p>
-    {% else %}
-    <p class="muted small-note">Approve the prompt on your phone. This page updates automatically.</p>
     {% endif %}
-
-    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
   </div>
 </section>
 {% endblock %}
@@ -27,14 +18,12 @@
 {% block scripts %}
 <script>
 (function () {
-  const pill = document.getElementById("status-pill");
-  const msg = document.getElementById("status-msg");
+  var pill = document.getElementById("status-pill");
   function poll() {
     fetch("{% url 'payment_status_json' payment.order_id %}")
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (pill) pill.textContent = data.status;
-        if (msg) msg.textContent = data.message || "";
         if (data.status === "COMPLETED" && data.next_url) {
           window.location.href = data.next_url;
           return;
@@ -43,9 +32,7 @@
       })
       .catch(function () { setTimeout(poll, 4000); });
   }
-  {% if payment.status == "PENDING" %}
-  setTimeout(poll, 2000);
-  {% endif %}
+  {% if payment.status == "PENDING" %}setTimeout(poll, 1500);{% endif %}
 })();
 </script>
 {% endblock %}
