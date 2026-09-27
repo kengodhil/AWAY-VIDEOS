@@ -98,7 +98,7 @@ def pay_video(request, pk):
         try:
             order = client.create_order(
                 order_id=order_id,
-                buyer_email=request.user.email or f"{request.user.username}@adureel.local",
+                buyer_email=request.user.email or f"{request.user.username}@awayvideos.local",
                 buyer_name=request.user.get_full_name() or request.user.username,
                 buyer_phone=phone,
                 amount=video.price,
