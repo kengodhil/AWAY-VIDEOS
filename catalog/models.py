@@ -13,10 +13,8 @@ class Video(models.Model):
         default=1000,
         help_text="Price to download video (TZS)",
     )
-    # Local path OR Cloudinary public_id (string)
     thumbnail = models.ImageField(upload_to="thumbnails/", blank=True)
     video_file = models.FileField(upload_to="videos/", blank=True)
-    # Canonical CDN URLs (set on upload when Cloudinary is enabled)
     thumbnail_cdn = models.URLField(max_length=500, blank=True)
     video_cdn = models.URLField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -66,7 +64,8 @@ class Payment(models.Model):
         WATCH = "WATCH", "Watch"
         DOWNLOAD = "DOWNLOAD", "Download"
 
-    session_key = models.CharField(max_length=64, db_index=True)
+    # signed_cookies session keys are longer than default Django session keys
+    session_key = models.CharField(max_length=255, db_index=True)
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="payments")
     purpose = models.CharField(max_length=16, choices=Purpose.choices)
     order_id = models.CharField(max_length=64, unique=True)
