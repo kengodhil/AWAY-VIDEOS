@@ -1,0 +1,104 @@
+{% extends "catalog/base.html" %}
+{% block title %}Studio · AWAY Videos{% endblock %}
+{% block content %}
+<section class="studio">
+  <div class="studio-head">
+    <div>
+      <p class="eyebrow">Studio</p>
+      <h1>Dashboard</h1>
+      <p class="muted">Signed in as <strong>{{ request.user.username }}</strong></p>
+    </div>
+    <div class="studio-actions">
+      <a class="btn btn-small" href="{% url 'studio_add_video' %}">+ Upload video</a>
+      <a class="btn btn-small btn-ghost" href="{% url 'studio_add_admin' %}">+ Add admin</a>
+      <a class="btn btn-small btn-ghost" href="{% url 'studio_logout' %}">Log out</a>
+    </div>
+  </div>
+
+  <div class="studio-stats">
+    <div class="stat-card"><span class="stat-num">{{ videos|length }}</span><span class="stat-label">Videos</span></div>
+    <div class="stat-card"><span class="stat-num">{{ payments_count }}</span><span class="stat-label">Payments</span></div>
+    <div class="stat-card"><span class="stat-num">{{ paid_count }}</span><span class="stat-label">Completed</span></div>
+    <div class="stat-card"><span class="stat-num">{{ admins|length }}</span><span class="stat-label">Admins</span></div>
+  </div>
+
+  <h2 class="studio-section">Videos</h2>
+  <div class="card table-card">
+    <table class="studio-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Watch</th>
+          <th>Download</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in videos %}
+        <tr>
+          <td>{{ v.title }}</td>
+          <td>TZS {{ v.watch_price|floatformat:0 }}</td>
+          <td>TZS {{ v.download_price|floatformat:0 }}</td>
+          <td class="right">
+            <form method="post" action="{% url 'studio_delete_video' v.pk %}" onsubmit="return confirm('Delete this video?');">
+              {% csrf_token %}
+              <button type="submit" class="link-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No videos yet. Upload one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="studio-section">Recent payments</h2>
+  <div class="card table-card">
+    <table class="studio-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Video</th>
+          <th>Type</th>
+          <th>Phone</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.created_at|date:"d M Y H:i" }}</td>
+          <td>{{ p.video.title }}</td>
+          <td>{{ p.purpose }}</td>
+          <td>{{ p.phone }}</td>
+          <td>TZS {{ p.amount|floatformat:0 }}</td>
+          <td><span class="pill-{{ p.status|lower }}">{{ p.status }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="muted">No payments yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="studio-section">Admins</h2>
+  <div class="card table-card">
+    <table class="studio-table">
+      <thead>
+        <tr><th>Username</th><th>Email</th><th>Joined</th></tr>
+      </thead>
+      <tbody>
+        {% for a in admins %}
+        <tr>
+          <td>{{ a.username }}{% if a == request.user %} <span class="muted">(you)</span>{% endif %}</td>
+          <td>{{ a.email|default:"—" }}</td>
+          <td>{{ a.date_joined|date:"d M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

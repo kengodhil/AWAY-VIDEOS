@@ -24,7 +24,7 @@
     {% block content %}{% endblock %}
   </main>
 
-  <a class="admin-btn" href="/admin/">Admin</a>
+  <a class="admin-btn" href="{% url 'studio_login' %}">Admin</a>
 
   <footer class="site-footer">
     <p>© {% now "Y" %} AWAY Videos</p>

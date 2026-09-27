@@ -1,0 +1,27 @@
+{% extends "catalog/base.html" %}
+{% block title %}Admin login · AWAY Videos{% endblock %}
+{% block content %}
+<section class="pay-shell">
+  <div class="card pay-card studio-login-card">
+    <p class="eyebrow">AWAY Videos</p>
+    <h1>Admin login</h1>
+    <p class="muted">Sign in to manage videos, payments, and admins.</p>
+    <form method="post" class="stack">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <label>
+        Username
+        {{ form.username }}
+        {{ form.username.errors }}
+      </label>
+      <label>
+        Password
+        {{ form.password }}
+        {{ form.password.errors }}
+      </label>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+    <p class="muted small-note"><a href="{% url 'home' %}">← Back to site</a></p>
+  </div>
+</section>
+{% endblock %}

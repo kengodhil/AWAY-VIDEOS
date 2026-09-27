@@ -1,0 +1,24 @@
+{% extends "catalog/base.html" %}
+{% block title %}Add admin · AWAY Videos{% endblock %}
+{% block content %}
+<section class="pay-shell">
+  <div class="card pay-card studio-form-card">
+    <p class="eyebrow">Studio</p>
+    <h1>Add admin</h1>
+    <p class="muted">New admins can upload videos, view payments, and add other admins.</p>
+    <form method="post" class="stack">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+      <label>
+        {{ field.label }}
+        {{ field }}
+        {{ field.errors }}
+      </label>
+      {% endfor %}
+      <button class="btn" type="submit">Create admin</button>
+    </form>
+    <p class="muted small-note"><a href="{% url 'studio_dashboard' %}">← Back to dashboard</a></p>
+  </div>
+</section>
+{% endblock %}
