@@ -1,74 +1,26 @@
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
-from .models import User, Video
-from .utils import normalize_msisdn
+from .snippe import normalize_phone
 
 
-class StyledFormMixin:
-    def _style(self):
-        for field in self.fields.values():
-            existing = field.widget.attrs.get("class", "")
-            field.widget.attrs["class"] = f"{existing} field-input".strip()
-
-
-class RegisterForm(StyledFormMixin, UserCreationForm):
-    first_name = forms.CharField(label="Full name")
-    email = forms.EmailField(label="Email")
-    phone = forms.CharField(label="Mobile number", help_text="Use 07XXXXXXXX or 2557XXXXXXXX")
-
-    class Meta:
-        model = User
-        fields = ("first_name", "email", "phone", "username", "password1", "password2")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["username"].help_text = "This is how you sign in."
-        self.fields["password1"].help_text = "At least 6 characters."
-        self._style()
+class PayForm(forms.Form):
+    phone = forms.CharField(
+        max_length=20,
+        label="Mobile money number",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "07XXXXXXXX or 2557XXXXXXXX",
+                "inputmode": "tel",
+                "autocomplete": "tel",
+            }
+        ),
+    )
 
     def clean_phone(self):
-        return normalize_msisdn(self.cleaned_data["phone"])
-
-    def clean_email(self):
-        email = self.cleaned_data["email"].lower()
-        if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("This email is already registered.")
-        return email
-
-
-class LoginForm(StyledFormMixin, AuthenticationForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["username"].label = "Username"
-        self.fields["password"].label = "Password"
-        self._style()
-
-
-class PayForm(StyledFormMixin, forms.Form):
-    phone = forms.CharField(label="Mobile money number", help_text="You will receive a payment prompt on this phone.")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._style()
-
-    def clean_phone(self):
-        return normalize_msisdn(self.cleaned_data["phone"])
-
-
-class VideoForm(StyledFormMixin, forms.ModelForm):
-    class Meta:
-        model = Video
-        fields = ("title", "description", "price", "thumbnail", "video_file")
-        labels = {
-            "title": "Video title",
-            "description": "Short description",
-            "price": "Price (TZS)",
-            "thumbnail": "Cover image (optional)",
-            "video_file": "Video file",
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["description"].widget.attrs["rows"] = 4
-        self._style()
+        raw = self.cleaned_data["phone"].strip()
+        normalized = normalize_phone(raw)
+        if not (normalized.startswith("255") and len(normalized) == 12):
+            raise forms.ValidationError(
+                "Enter a valid Tanzania mobile number (e.g. 07XXXXXXXX)."
+            )
+        return normalized

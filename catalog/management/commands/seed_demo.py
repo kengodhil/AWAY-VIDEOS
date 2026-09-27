@@ -1,9 +1,9 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = "Create a demo admin account if it does not exist."
+    help = "Create a demo Django admin account for managing videos."
 
     def handle(self, *args, **options):
         User = get_user_model()
@@ -14,7 +14,5 @@ class Command(BaseCommand):
             username="admin",
             email="admin@awayvideos.local",
             password="admin123",
-            first_name="Adu Admin",
-            phone="255700000000",
         )
-        self.stdout.write(self.style.SUCCESS("Created admin / admin123"))
+        self.stdout.write(self.style.SUCCESS("Created admin / admin123 — use /admin/ to add videos"))
