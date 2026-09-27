@@ -37,105 +37,47 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# ─── Cloudinary CDN (videos/images survive Render redeploys) ─────────────────
+# ─── Cloudinary CDN ──────────────────────────────────────────────────────────
 _cloudinary_url = (os.getenv("CLOUDINARY_URL") or "").strip().strip("'\"")
 USE_CLOUDINARY = bool(_cloudinary_url)
+CLOUDINARY_CLOUD_NAME = ""
 
 if USE_CLOUDINARY:
-    INSTALLED_APPS = [
-        "django.contrib.admin",
-        "django.contrib.auth",
-        "django.contrib.contenttypes",
-        "django.contrib.sessions",
-        "django.contrib.messages",
-        "django.contrib.staticfiles",
-        "cloudinary_storage",
-        "cloudinary",
-        "catalog.apps.CatalogConfig",
-    ]
+    INSTALLED_APPS.insert(-1, "cloudinary")
 
-    # Parse cloudinary://API_KEY:API_SECRET@CLOUD_NAME
     _cu = urlparse(_cloudinary_url)
-    _cloud_name = (_cu.hostname or "").strip()
+    CLOUDINARY_CLOUD_NAME = (_cu.hostname or "").strip()
     _api_key = unquote(_cu.username or "")
     _api_secret = unquote(_cu.password or "")
-
-    # Optional overrides (private CDN / custom CNAME)
-    _private_cdn = os.getenv("CLOUDINARY_PRIVATE_CDN", "false").lower() == "true"
-    _secure_distribution = (os.getenv("CLOUDINARY_SECURE_DISTRIBUTION") or "").strip()
 
     import cloudinary
 
     cloudinary.config(
-        cloud_name=_cloud_name,
+        cloud_name=CLOUDINARY_CLOUD_NAME,
         api_key=_api_key,
         api_secret=_api_secret,
-        secure=True,  # HTTPS CDN URLs (res.cloudinary.com)
-        private_cdn=_private_cdn,
-        secure_distribution=_secure_distribution or None,
+        secure=True,
     )
 
-    CLOUDINARY_STORAGE = {
-        "CLOUD_NAME": _cloud_name,
-        "API_KEY": _api_key,
-        "API_SECRET": _api_secret,
-        # CDN delivery
-        "SECURE": True,  # https://res.cloudinary.com/...
-        "MEDIA_TAG": "away-videos-media",
-        "PREFIX": "away-videos",
-        "INVALID_VIDEO_ERROR_MESSAGE": "Please upload a valid video file (mp4, webm, mov).",
-        "STATIC_VIDEOS_EXTENSIONS": [
-            "mp4",
-            "webm",
-            "mov",
-            "m4v",
-            "avi",
-            "mkv",
-            "ogv",
-            "3gp",
-        ],
-        "STATIC_IMAGES_EXTENSIONS": [
-            "jpg",
-            "jpeg",
-            "png",
-            "gif",
-            "webp",
-            "bmp",
-            "tif",
-            "tiff",
-        ],
-    }
-    if _private_cdn:
-        CLOUDINARY_STORAGE["SECURE"] = True
-
-    # Public CDN base URL (used by templates / .url on FileFields)
-    if _secure_distribution:
-        MEDIA_URL = f"https://{_secure_distribution}/"
-    elif _private_cdn and _cloud_name:
-        MEDIA_URL = f"https://{_cloud_name}-res.cloudinary.com/"
-    else:
-        MEDIA_URL = f"https://res.cloudinary.com/{_cloud_name}/"
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-        },
-    }
+    MEDIA_URL = f"https://res.cloudinary.com/{CLOUDINARY_CLOUD_NAME}/"
 else:
     MEDIA_URL = "/media/"
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-        },
-    }
 
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Uploads go to Cloudinary via API; local FileField is optional fallback only
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+
+# Allow larger video uploads (Render still caps ~100MB request body)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
