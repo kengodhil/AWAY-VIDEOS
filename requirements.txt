@@ -6,4 +6,3 @@ gunicorn
 whitenoise
 psycopg[binary]>=3.1
 cloudinary
-django-cloudinary-storage
