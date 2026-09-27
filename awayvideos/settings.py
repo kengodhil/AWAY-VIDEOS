@@ -9,7 +9,6 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 
-# Comma-separated hosts; on Render also allow the service hostname automatically
 _hosts = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
 _render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 if _render_host and _render_host not in _hosts:
@@ -20,7 +19,6 @@ if DEBUG:
             _hosts.append(host)
 ALLOWED_HOSTS = _hosts
 
-# CSRF trusted origins (required for HTTPS on Render)
 _csrf = [o.strip() for o in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 if _render_host:
     origin = f"https://{_render_host}"
@@ -75,8 +73,6 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = "catalog.User"
-
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 6}},
 ]
@@ -101,21 +97,20 @@ STORAGES = {
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "video_list"
-LOGOUT_REDIRECT_URL = "home"
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Behind Render / other reverse proxies
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Selcom checkout (https://developers.selcommobile.com/)
-SELCOM_BASE_URL = os.getenv("SELCOM_BASE_URL", "https://apigw.selcommobile.com")
-SELCOM_API_KEY = os.getenv("SELCOM_API_KEY", "")
-SELCOM_API_SECRET = os.getenv("SELCOM_API_SECRET", "")
-SELCOM_VENDOR = os.getenv("SELCOM_VENDOR", "")
-SELCOM_WEBHOOK_URL = os.getenv("SELCOM_WEBHOOK_URL", "")
-SELCOM_MOCK = os.getenv("SELCOM_MOCK", "true").lower() == "true"
+# Snippe payments (https://docs.snippe.sh/)
+SNIPPE_BASE_URL = os.getenv("SNIPPE_BASE_URL", "https://api.snippe.sh")
+SNIPPE_API_KEY = os.getenv("SNIPPE_API_KEY", "")
+SNIPPE_WEBHOOK_URL = os.getenv("SNIPPE_WEBHOOK_URL", "")
+SNIPPE_MOCK = os.getenv("SNIPPE_MOCK", "true").lower() == "true"
+
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
+SESSION_SAVE_EVERY_REQUEST = True
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+WATCH_PRICE_TZS = 2000
+DOWNLOAD_PRICE_TZS = 1000
