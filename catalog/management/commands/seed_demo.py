@@ -12,7 +12,7 @@ class Command(BaseCommand):
             return
         User.objects.create_superuser(
             username="admin",
-            email="admin@adureel.local",
+            email="admin@awayvideos.local",
             password="admin123",
             first_name="Adu Admin",
             phone="255700000000",
