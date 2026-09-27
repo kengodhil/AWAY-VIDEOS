@@ -54,39 +54,10 @@ def pay_video(request, pk, purpose):
             phone=phone,
             amount=amount,
         )
-
-        if settings.SNIPPE_MOCK:
-            payment.mark_completed(message="ok")
-            if purpose == Payment.Purpose.WATCH:
-                return redirect("watch_video", pk=video.pk)
-            return redirect("download_video", pk=video.pk)
-
-        webhook = settings.SNIPPE_WEBHOOK_URL or request.build_absolute_uri(
-            reverse("snippe_webhook")
-        )
-        client = SnippeClient()
-        try:
-            result = client.create_mobile_payment(
-                amount=amount,
-                phone=phone,
-                webhook_url=webhook,
-                metadata={
-                    "order_id": order_id,
-                    "video_id": str(video.pk),
-                    "purpose": purpose,
-                },
-                idempotency_key=order_id,
-            )
-            ref = str(result.get("reference") or "")
-            payment.snippe_reference = ref
-            payment.snippe_message = str(result.get("status") or "pending")
-            payment.save(update_fields=["snippe_reference", "snippe_message"])
-            return redirect("payment_status", order_id=payment.order_id)
-        except SnippeError as exc:
-            payment.status = Payment.Status.FAILED
-            payment.snippe_message = str(exc)
-            payment.save(update_fields=["status", "snippe_message"])
-            return redirect("pay_video", pk=video.pk, purpose=purpose.lower())
+        payment.mark_completed(message="ok")
+        if purpose == Payment.Purpose.WATCH:
+            return redirect("watch_video", pk=video.pk)
+        return redirect("download_video", pk=video.pk)
 
     return render(
         request,
@@ -113,7 +84,7 @@ def payment_status(request, order_id):
     return render(
         request,
         "catalog/payment_status.html",
-        {"payment": payment, "mock": settings.SNIPPE_MOCK},
+        {"payment": payment, "mock": True},
     )
 
 
