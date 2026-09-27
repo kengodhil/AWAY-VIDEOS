@@ -3,29 +3,22 @@
 {% block content %}
 <section class="watch-shell">
   <div class="player-frame">
-    <video
-      class="player"
-      controls
-      playsinline
-      controlslist="nodownload"
-      {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}
-    >
-      <source src="{{ video.video_file.url }}" type="video/mp4">
-      Your browser does not support video playback.
+    {% if video.video_url %}
+    <video class="player" controls playsinline autoplay
+      {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}>
+      <source src="{{ video.video_url }}" type="video/mp4">
     </video>
+    {% else %}
+    <p class="muted center" style="padding:2rem">Video file is missing. Re-upload in Studio.</p>
+    {% endif %}
     <div class="player-actions">
       {% if can_download %}
-      <a class="icon-btn" href="{% url 'download_video' video.pk %}" title="Download" aria-label="Download">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>
-        </svg>
+      <a class="icon-btn" href="{% url 'download_video' video.pk %}" title="Download">
+        <span class="icon-label">⬇ Download</span>
       </a>
       {% else %}
-      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}" title="Pay TZS {{ video.download_price }} to download" aria-label="Download">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>
-        </svg>
-        <span class="icon-label">TZS {{ video.download_price|floatformat:0 }}</span>
+      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}" title="Pay to download">
+        <span class="icon-label">⬇ Download</span>
       </a>
       {% endif %}
     </div>
@@ -33,7 +26,7 @@
   <div class="watch-meta">
     <h1>{{ video.title }}</h1>
     {% if video.description %}<p class="muted">{{ video.description }}</p>{% endif %}
-    <a class="btn btn-ghost" href="{% url 'home' %}">← More videos</a>
+    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
   </div>
 </section>
 {% endblock %}

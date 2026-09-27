@@ -5,20 +5,19 @@
   {% for video in videos %}
   <article class="v-card">
     <div class="teaser-wrap">
-      {% if video.video_file %}
+      {% if video.video_url %}
       <video
         class="teaser"
         muted
         playsinline
-        loop
         preload="auto"
-        {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}
+        {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
         data-teaser
       >
-        <source src="{{ video.video_file.url }}" type="video/mp4">
+        <source src="{{ video.video_url }}" type="video/mp4">
       </video>
-      {% elif video.thumbnail %}
-      <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}">
+      {% elif video.thumbnail_url %}
+      <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}">
       {% else %}
       <div class="poster">▶</div>
       {% endif %}
@@ -41,11 +40,9 @@
 (function () {
   var teasers = document.querySelectorAll("[data-teaser]");
   var LIMIT = 5;
-
   teasers.forEach(function (v) {
     var wrap = v.closest(".teaser-wrap") || v;
     var playing = false;
-
     function startPreview() {
       try {
         v.muted = true;
@@ -55,42 +52,28 @@
         playing = true;
       } catch (e) {}
     }
-
     function stopPreview() {
-      try {
-        v.pause();
-        v.currentTime = 0;
-      } catch (e) {}
+      try { v.pause(); v.currentTime = 0; } catch (e) {}
       playing = false;
     }
-
     v.addEventListener("timeupdate", function () {
       if (v.currentTime >= LIMIT) {
         v.pause();
         v.currentTime = 0;
-        // replay once more while still hovered / in view
         if (playing) {
           var p = v.play();
           if (p && p.catch) p.catch(function () {});
         }
       }
     });
-
     wrap.addEventListener("mouseenter", startPreview);
     wrap.addEventListener("mouseleave", stopPreview);
-    wrap.addEventListener("touchstart", function () {
-      startPreview();
-    }, { passive: true });
-
-    // Auto-play teaser when card is on screen (mobile + desktop)
+    wrap.addEventListener("touchstart", function () { startPreview(); }, { passive: true });
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
-          if (e.isIntersecting && e.intersectionRatio >= 0.35) {
-            startPreview();
-          } else {
-            stopPreview();
-          }
+          if (e.isIntersecting && e.intersectionRatio >= 0.35) startPreview();
+          else stopPreview();
         });
       }, { threshold: [0, 0.35, 0.6] });
       io.observe(wrap);

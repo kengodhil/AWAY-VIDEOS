@@ -26,7 +26,6 @@ class PayForm(forms.Form):
 
     def clean_phone(self):
         raw = self.cleaned_data["phone"].strip()
-        # User types local digits after +255 (e.g. 712345678)
         digits = "".join(c for c in raw if c.isdigit())
         if digits.startswith("255"):
             pass
@@ -36,9 +35,7 @@ class PayForm(forms.Form):
             digits = "255" + digits
         normalized = normalize_phone(digits)
         if not (normalized.startswith("255") and len(normalized) == 12):
-            raise forms.ValidationError(
-                "Ingiza namba sahihi (mfano 712345678)."
-            )
+            raise forms.ValidationError("Ingiza namba sahihi (mfano 712345678).")
         return normalized
 
 
@@ -57,15 +54,35 @@ class VideoForm(forms.ModelForm):
         fields = ("title", "description", "watch_price", "download_price", "thumbnail", "video_file")
         widgets = {
             "title": forms.TextInput(attrs={"placeholder": "Video title"}),
-            "description": forms.Textarea(attrs={"rows": 3, "placeholder": "Short description (optional)"}),
+            "description": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Short description (optional)"}
+            ),
             "watch_price": forms.NumberInput(attrs={"min": 500}),
             "download_price": forms.NumberInput(attrs={"min": 500}),
+            "video_file": forms.ClearableFileInput(
+                attrs={"accept": "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"}
+            ),
+            "thumbnail": forms.ClearableFileInput(
+                attrs={"accept": "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png"}
+            ),
         }
+
+    def clean_video_file(self):
+        f = self.cleaned_data.get("video_file")
+        if not f and not self.instance.pk:
+            # Required on create unless we already have CDN (edit)
+            if not getattr(self.instance, "video_cdn", None):
+                raise forms.ValidationError("Choose a video file (mp4 recommended, under 100MB).")
+        if f and f.size and f.size > 100 * 1024 * 1024:
+            raise forms.ValidationError("Video is too large. Max 100MB on free Cloudinary / Render.")
+        return f
 
 
 class AddAdminForm(forms.Form):
     username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"placeholder": "Username"}))
-    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={"placeholder": "Email (optional)"}))
+    email = forms.EmailField(
+        required=False, widget=forms.EmailInput(attrs={"placeholder": "Email (optional)"})
+    )
     password = forms.CharField(
         min_length=6,
         widget=forms.PasswordInput(attrs={"placeholder": "Password (min 6 characters)"}),
