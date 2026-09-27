@@ -1,4 +1,4 @@
-# AWAY VIDEOS Reel
+# AWAY VIDEOS
 
 Simple Django website for paid videos. A viewer enters a Tanzania mobile number. The app sends a Selcom wallet-payment prompt. After a successful payment, the video unlocks.
 
@@ -19,10 +19,14 @@ The interface uses two colours: deep teal and gold.
 ## Run locally
 
 ```bash
-py -3 -m venv .venv
-.\.venv\Scripts\activate
+python3 -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+source .venv/bin/activate
+
 pip install -r requirements.txt
-copy .env.example .env
+cp .env.example .env   # Windows: copy .env.example .env
 python manage.py migrate
 python manage.py seed_demo
 python manage.py runserver
@@ -37,9 +41,34 @@ Demo admin login:
 
 With `SELCOM_MOCK=true` (the default), the payment screen has a demo confirm button so you can test without live Selcom keys.
 
+## Deploy on Render
+
+1. Push this repo to GitHub.
+2. In [Render](https://render.com) → **New → Blueprint** and connect the repo (uses `render.yaml`), **or** create a **Web Service** manually:
+   - **Runtime:** Python
+   - **Build command:** `./build.sh`
+   - **Start command:** `gunicorn awayvideos.wsgi:application`
+3. Set environment variables (Blueprint already sets most of these):
+
+| Variable | Value |
+|---|---|
+| `DJANGO_SECRET_KEY` | Generate a long random string |
+| `DJANGO_DEBUG` | `false` |
+| `DJANGO_ALLOWED_HOSTS` | `.onrender.com` (or your custom domain) |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://your-app.onrender.com` |
+| `SELCOM_MOCK` | `true` until you have live keys |
+
+4. After deploy, open **Render Shell** once and run:
+
+```bash
+python manage.py seed_demo
+```
+
+**Note:** Render’s free disk is ephemeral. SQLite and uploaded videos under `media/` will be wiped on redeploy. For production, switch to Postgres + object storage (e.g. S3 / Cloudinary) later.
+
 ## Live Selcom setup
 
-Ask Selcom for an API key, API secret, and vendor/till ID. Put them in `.env`:
+Ask Selcom for an API key, API secret, and vendor/till ID. Put them in `.env` (or Render env vars):
 
 ```
 SELCOM_MOCK=false
@@ -60,6 +89,7 @@ The webhook URL must be a public HTTPS address Selcom can reach.
 
 ## Notes
 
+- Project package is `awayvideos` (valid Python package name — no spaces).
 - Video files are stored in `media/videos/`.
 - SQLite is used for simplicity.
 - Change the demo admin password before any public deployment.
