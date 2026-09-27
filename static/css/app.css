@@ -1,5 +1,4 @@
 :root {
-  /* Bold neutral energy: red · black · warm off-white */
   --red: #e10600;
   --red-deep: #b00500;
   --red-soft: #ff2a22;
@@ -14,7 +13,6 @@
   --card: #141414;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 
-  /* Aliases for existing rules */
   --teal: var(--red);
   --teal-dark: var(--black);
   --gold: var(--cream);
@@ -324,44 +322,184 @@ input::placeholder, textarea::placeholder {
   margin: .5rem 0;
 }
 
-.watch-shell { max-width: 900px; margin: 0 auto; }
-.player-frame {
+/* ── Custom video player ─────────────────────────────────── */
+.watch-shell { max-width: 920px; margin: 0 auto; }
+.watch-meta { margin-top: 1rem; }
+.watch-meta h1 { font-size: 1.35rem; }
+
+.av-player {
   position: relative;
   background: #000;
   border-radius: .75rem;
   overflow: hidden;
   box-shadow: var(--shadow);
   border: 1px solid var(--line);
-}
-.player {
-  width: 100%;
+  aspect-ratio: 16 / 9;
   max-height: 72vh;
+}
+.av-video {
+  width: 100%;
+  height: 100%;
   display: block;
+  object-fit: contain;
   background: #000;
+  cursor: pointer;
 }
-.player-actions {
+.av-big-play {
   position: absolute;
-  right: .7rem;
-  bottom: .7rem;
-  z-index: 5;
+  inset: 0;
+  margin: auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--cream);
+  background: rgba(225, 6, 0, 0.85);
+  color: var(--cream);
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 4;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
 }
-.icon-btn {
-  border-radius: .5rem;
-  padding: .55rem .7rem;
-  background: rgba(20, 20, 20, 0.92);
+.av-big-play:hover { background: var(--red-soft); }
+
+.av-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  padding: .55rem .75rem .7rem;
+  background: linear-gradient(transparent, rgba(0,0,0,.85) 40%);
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.av-player:hover .av-controls,
+.av-player:focus-within .av-controls {
+  opacity: 1;
+}
+@media (hover: none) {
+  .av-controls { opacity: 1; }
+}
+
+.av-progress-wrap {
+  position: relative;
+  height: 6px;
+  margin-bottom: .55rem;
+  border-radius: 99px;
+  background: rgba(255,255,255,.18);
+}
+.av-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: 99px;
+  background: var(--red);
+  pointer-events: none;
+}
+.av-seek {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  height: 100%;
+}
+
+.av-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.av-left, .av-right {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.av-time {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--cream-dim);
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.av-btn {
+  background: rgba(30, 30, 30, 0.9);
   color: var(--cream);
   border: 1px solid var(--line);
-  box-shadow: 0 4px 14px rgba(0,0,0,.4);
-  min-height: 42px;
+  border-radius: .4rem;
+  min-width: 38px;
+  height: 36px;
+  padding: 0 .55rem;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
-.icon-btn:hover {
+.av-btn:hover {
   background: var(--red);
-  color: var(--cream);
   border-color: var(--red);
+  color: #fff;
 }
-.icon-label { font-size: .7rem; font-weight: 800; }
-.watch-meta { margin-top: 1rem; }
-.watch-meta h1 { font-size: 1.35rem; }
+.av-dl { font-size: 1rem; }
+
+.av-menu-wrap { position: relative; }
+.av-pop {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: var(--charcoal);
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  padding: .55rem .65rem;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.av-pop.open { display: block; }
+.av-vol {
+  width: 90px;
+  height: 6px;
+  padding: 0;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+.av-speed-pop {
+  display: none;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 72px;
+  padding: .35rem;
+}
+.av-speed-pop.open { display: flex; }
+.av-speed-pop button {
+  background: transparent;
+  border: 0;
+  color: var(--cream-dim);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  padding: .4rem .55rem;
+  border-radius: .35rem;
+  cursor: pointer;
+  text-align: left;
+}
+.av-speed-pop button:hover,
+.av-speed-pop button.active {
+  background: var(--red);
+  color: #fff;
+}
 
 .admin-btn {
   position: fixed;
@@ -477,4 +615,6 @@ input::placeholder, textarea::placeholder {
   .admin-btn { left: .75rem; bottom: .75rem; font-size: .75rem; padding: .4rem .75rem; }
   .wallet-logos img { height: 24px; }
   h1.pay-title { font-size: .98rem; }
+  .av-time { font-size: .68rem; }
+  .av-btn { min-width: 34px; height: 32px; font-size: .78rem; }
 }

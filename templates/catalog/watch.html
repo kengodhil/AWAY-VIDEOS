@@ -2,24 +2,168 @@
 {% block title %}{{ video.title }} · AWAY Videos{% endblock %}
 {% block content %}
 <section class="watch-shell">
-  <div class="player-frame">
+  <div class="av-player" id="avPlayer">
     {% if video.video_url %}
-    <video class="player" controls playsinline autoplay preload="auto"
+    <video
+      id="avVideo"
+      class="av-video"
+      playsinline
+      preload="auto"
+      controlslist="nodownload noplaybackrate noremoteplayback"
+      disablepictureinpicture
       {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
-      src="{{ video.video_url }}"></video>
+      src="{{ video.video_url }}"
+    ></video>
+    <button type="button" class="av-big-play" id="avBigPlay" aria-label="Play">▶</button>
+    <div class="av-controls" id="avControls">
+      <div class="av-progress-wrap">
+        <input type="range" id="avSeek" class="av-seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
+        <div class="av-progress-fill" id="avFill"></div>
+      </div>
+      <div class="av-bar">
+        <div class="av-left">
+          <button type="button" class="av-btn" id="avPlay" aria-label="Play">▶</button>
+          <span class="av-time" id="avTime">0:00 / 0:00</span>
+        </div>
+        <div class="av-right">
+          <div class="av-menu-wrap">
+            <button type="button" class="av-btn" id="avVolBtn" aria-label="Volume">🔊</button>
+            <div class="av-pop" id="avVolPop">
+              <input type="range" id="avVol" class="av-vol" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+            </div>
+          </div>
+          <div class="av-menu-wrap">
+            <button type="button" class="av-btn" id="avSpeedBtn" aria-label="Speed">1x</button>
+            <div class="av-pop av-speed-pop" id="avSpeedPop">
+              <button type="button" data-speed="0.5">0.5x</button>
+              <button type="button" data-speed="0.75">0.75x</button>
+              <button type="button" data-speed="1" class="active">1x</button>
+              <button type="button" data-speed="1.25">1.25x</button>
+              <button type="button" data-speed="1.5">1.5x</button>
+              <button type="button" data-speed="2">2x</button>
+            </div>
+          </div>
+          {% if can_download %}
+          <a class="av-btn av-dl" href="{% url 'download_video' video.pk %}" aria-label="Download">⬇</a>
+          {% else %}
+          <a class="av-btn av-dl" href="{% url 'pay_video' video.pk 'download' %}" aria-label="Download">⬇</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
     {% else %}
     <div class="poster" style="min-height:40vh">▶</div>
     {% endif %}
-    <div class="player-actions">
-      {% if can_download %}
-      <a class="icon-btn" href="{% url 'download_video' video.pk %}"><span class="icon-label">⬇</span></a>
-      {% else %}
-      <a class="icon-btn" href="{% url 'pay_video' video.pk 'download' %}"><span class="icon-label">⬇</span></a>
-      {% endif %}
-    </div>
   </div>
   <div class="watch-meta">
     <h1>{{ video.title }}</h1>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var video = document.getElementById("avVideo");
+  if (!video) return;
+
+  var playBtn = document.getElementById("avPlay");
+  var bigPlay = document.getElementById("avBigPlay");
+  var seek = document.getElementById("avSeek");
+  var fill = document.getElementById("avFill");
+  var timeEl = document.getElementById("avTime");
+  var volBtn = document.getElementById("avVolBtn");
+  var volPop = document.getElementById("avVolPop");
+  var vol = document.getElementById("avVol");
+  var speedBtn = document.getElementById("avSpeedBtn");
+  var speedPop = document.getElementById("avSpeedPop");
+  var shell = document.getElementById("avPlayer");
+
+  function fmt(s) {
+    s = Math.max(0, Math.floor(s || 0));
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  function syncPlayUi() {
+    var playing = !video.paused;
+    playBtn.textContent = playing ? "❚❚" : "▶";
+    bigPlay.style.display = playing ? "none" : "grid";
+  }
+
+  function togglePlay() {
+    if (video.paused) video.play().catch(function () {});
+    else video.pause();
+  }
+
+  playBtn.addEventListener("click", togglePlay);
+  bigPlay.addEventListener("click", togglePlay);
+  video.addEventListener("click", togglePlay);
+  video.addEventListener("play", syncPlayUi);
+  video.addEventListener("pause", syncPlayUi);
+
+  video.addEventListener("timeupdate", function () {
+    if (!video.duration) return;
+    var p = (video.currentTime / video.duration) * 1000;
+    seek.value = p;
+    fill.style.width = (p / 10) + "%";
+    timeEl.textContent = fmt(video.currentTime) + " / " + fmt(video.duration);
+  });
+
+  video.addEventListener("loadedmetadata", function () {
+    timeEl.textContent = fmt(0) + " / " + fmt(video.duration);
+  });
+
+  seek.addEventListener("input", function () {
+    if (!video.duration) return;
+    video.currentTime = (seek.value / 1000) * video.duration;
+    fill.style.width = (seek.value / 10) + "%";
+  });
+
+  volBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    volPop.classList.toggle("open");
+    speedPop.classList.remove("open");
+  });
+  vol.addEventListener("input", function () {
+    video.volume = parseFloat(vol.value);
+    video.muted = video.volume === 0;
+    volBtn.textContent = video.muted || video.volume === 0 ? "🔇" : video.volume < 0.5 ? "🔉" : "🔊";
+  });
+  volBtn.addEventListener("dblclick", function () {
+    video.muted = !video.muted;
+    volBtn.textContent = video.muted ? "🔇" : "🔊";
+  });
+
+  speedBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    speedPop.classList.toggle("open");
+    volPop.classList.remove("open");
+  });
+  speedPop.querySelectorAll("[data-speed]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var s = parseFloat(btn.getAttribute("data-speed"));
+      video.playbackRate = s;
+      speedBtn.textContent = s + "x";
+      speedPop.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      speedPop.classList.remove("open");
+    });
+  });
+
+  document.addEventListener("click", function () {
+    volPop.classList.remove("open");
+    speedPop.classList.remove("open");
+  });
+  volPop.addEventListener("click", function (e) { e.stopPropagation(); });
+  speedPop.addEventListener("click", function (e) { e.stopPropagation(); });
+
+  // Block right-click save / native download menu on the video
+  video.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  video.play().catch(function () {});
+  syncPlayUi();
+})();
+</script>
 {% endblock %}
