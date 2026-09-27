@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .cloudinary_upload import CloudinaryUploadError, upload_image, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
@@ -191,7 +192,9 @@ def snippe_webhook(request):
         return HttpResponse("unknown payment", status=404)
 
     if is_completed(status):
-        payment.mark_completed(reference=reference or payment.snippe_reference, message="Paid via Snippe")
+        payment.mark_completed(
+            reference=reference or payment.snippe_reference, message="Paid via Snippe"
+        )
     elif status.lower() in {"failed", "voided", "expired", "cancelled"}:
         payment.status = Payment.Status.FAILED
         payment.snippe_message = status
@@ -204,7 +207,9 @@ def watch_video(request, pk):
     ensure_session(request)
     video = get_object_or_404(Video, pk=pk)
     if not session_has_access(request, video, Payment.Purpose.WATCH):
-        messages.warning(request, "Pay TZS {:,} to watch this video.".format(video.watch_price))
+        messages.warning(
+            request, "Pay TZS {:,} to watch this video.".format(video.watch_price)
+        )
         return redirect("pay_video", pk=video.pk, purpose="watch")
     can_download = session_has_access(request, video, Payment.Purpose.DOWNLOAD)
     return render(
@@ -223,6 +228,10 @@ def download_video(request, pk):
             "Pay TZS {:,} to download this video.".format(video.download_price),
         )
         return redirect("pay_video", pk=video.pk, purpose="download")
+
+    # Prefer CDN URL (redirect so browser downloads from Cloudinary)
+    if video.video_cdn:
+        return redirect(video.video_cdn)
     if not video.video_file:
         raise Http404("Video file missing")
     response = FileResponse(
@@ -232,8 +241,6 @@ def download_video(request, pk):
     )
     return response
 
-
-# ─── Studio (branded admin UI) ───────────────────────────────────────────────
 
 def studio_login(request):
     if request.user.is_authenticated and request.user.is_staff:
@@ -281,9 +288,40 @@ def studio_dashboard(request):
 def studio_add_video(request):
     form = VideoForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Video uploaded.")
-        return redirect("studio_dashboard")
+        video = form.save(commit=False)
+        video_file = request.FILES.get("video_file")
+        thumb_file = request.FILES.get("thumbnail")
+
+        try:
+            if getattr(settings, "USE_CLOUDINARY", False):
+                if not video_file:
+                    form.add_error("video_file", "Choose a video file.")
+                    return render(request, "catalog/studio_video_form.html", {"form": form})
+                video.video_cdn = upload_video(video_file)
+                # Do not keep a local copy on ephemeral Render disk
+                video.video_file = None
+                if thumb_file:
+                    video.thumbnail_cdn = upload_image(thumb_file)
+                    video.thumbnail = None
+            else:
+                if not video_file and not video.video_file:
+                    form.add_error("video_file", "Choose a video file.")
+                    return render(request, "catalog/studio_video_form.html", {"form": form})
+                if video_file:
+                    video.video_file = video_file
+                if thumb_file:
+                    video.thumbnail = thumb_file
+
+            video.save()
+            messages.success(request, "Video uploaded successfully.")
+            return redirect("studio_dashboard")
+        except CloudinaryUploadError as exc:
+            messages.error(request, f"Upload failed: {exc}")
+            form.add_error(None, str(exc))
+        except Exception as exc:
+            messages.error(request, f"Upload failed: {exc}")
+            form.add_error(None, str(exc))
+
     return render(request, "catalog/studio_video_form.html", {"form": form})
 
 
