@@ -1,5 +1,22 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+
+def _video_storage():
+    if getattr(settings, "USE_CLOUDINARY", False):
+        from cloudinary_storage.storage import VideoMediaCloudinaryStorage
+
+        return VideoMediaCloudinaryStorage()
+    return None
+
+
+def _image_storage():
+    if getattr(settings, "USE_CLOUDINARY", False):
+        from cloudinary_storage.storage import MediaCloudinaryStorage
+
+        return MediaCloudinaryStorage()
+    return None
 
 
 class Video(models.Model):
@@ -13,8 +30,15 @@ class Video(models.Model):
         default=1000,
         help_text="Price to download video (TZS)",
     )
-    thumbnail = models.ImageField(upload_to="thumbnails/", blank=True)
-    video_file = models.FileField(upload_to="videos/")
+    thumbnail = models.ImageField(
+        upload_to="thumbnails/",
+        blank=True,
+        storage=_image_storage,
+    )
+    video_file = models.FileField(
+        upload_to="videos/",
+        storage=_video_storage,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -22,6 +46,10 @@ class Video(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def has_playable_file(self) -> bool:
+        return bool(self.video_file and self.video_file.name)
 
 
 class Payment(models.Model):
