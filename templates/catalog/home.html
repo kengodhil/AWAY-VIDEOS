@@ -10,7 +10,8 @@
         class="teaser"
         muted
         playsinline
-        preload="metadata"
+        loop
+        preload="auto"
         {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}
         data-teaser
       >
@@ -38,31 +39,64 @@
 {% block scripts %}
 <script>
 (function () {
-  const teasers = document.querySelectorAll("[data-teaser]");
-  const LIMIT = 5;
+  var teasers = document.querySelectorAll("[data-teaser]");
+  var LIMIT = 5;
+
   teasers.forEach(function (v) {
-    const wrap = v.closest(".teaser-wrap") || v;
+    var wrap = v.closest(".teaser-wrap") || v;
+    var playing = false;
+
+    function startPreview() {
+      try {
+        v.muted = true;
+        v.currentTime = 0;
+        var p = v.play();
+        if (p && p.catch) p.catch(function () {});
+        playing = true;
+      } catch (e) {}
+    }
+
+    function stopPreview() {
+      try {
+        v.pause();
+        v.currentTime = 0;
+      } catch (e) {}
+      playing = false;
+    }
+
     v.addEventListener("timeupdate", function () {
       if (v.currentTime >= LIMIT) {
         v.pause();
         v.currentTime = 0;
+        // replay once more while still hovered / in view
+        if (playing) {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        }
       }
     });
-    wrap.addEventListener("mouseenter", function () {
-      v.currentTime = 0;
-      var p = v.play();
-      if (p && p.catch) p.catch(function () {});
-    });
-    wrap.addEventListener("mouseleave", function () {
-      v.pause();
-      v.currentTime = 0;
-    });
-    // Touch: tap to preview briefly
+
+    wrap.addEventListener("mouseenter", startPreview);
+    wrap.addEventListener("mouseleave", stopPreview);
     wrap.addEventListener("touchstart", function () {
-      v.currentTime = 0;
-      var p = v.play();
-      if (p && p.catch) p.catch(function () {});
+      startPreview();
     }, { passive: true });
+
+    // Auto-play teaser when card is on screen (mobile + desktop)
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting && e.intersectionRatio >= 0.35) {
+            startPreview();
+          } else {
+            stopPreview();
+          }
+        });
+      }, { threshold: [0, 0.35, 0.6] });
+      io.observe(wrap);
+    } else {
+      startPreview();
+    }
   });
 })();
 </script>

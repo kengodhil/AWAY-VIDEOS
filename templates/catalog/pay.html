@@ -5,20 +5,25 @@
 <section class="pay-shell">
   <div class="card pay-card">
     <p class="eyebrow">{% if is_download %}Download{% else %}Watch full video{% endif %}</p>
-    <h1>{{ video.title }}</h1>
+    <h1 class="pay-title">{{ video.title }}</h1>
     <p class="price">TZS {{ amount|floatformat:0 }}</p>
+    <p class="pay-cta">LIPIA UONE VIDEO YOTE</p>
     <form method="post" class="stack">
       {% csrf_token %}
       {{ form.non_field_errors }}
       <div class="phone-field">
-        {{ form.phone }}
+        <label class="phone-label" for="id_phone">INGIZA NAMBA YA MALIPO</label>
+        <div class="phone-input-row">
+          <span class="phone-prefix">+255</span>
+          {{ form.phone }}
+        </div>
         {{ form.phone.errors }}
       </div>
       <div class="wallet-logos" aria-label="Supported mobile wallets">
-        <img src="{% static 'img/wallets/vodacom.svg' %}" alt="Vodacom" width="56" height="18">
-        <img src="{% static 'img/wallets/airtel.svg' %}" alt="Airtel" width="48" height="18">
-        <img src="{% static 'img/wallets/tigo.svg' %}" alt="Tigo" width="44" height="18">
-        <img src="{% static 'img/wallets/halotel.svg' %}" alt="Halotel" width="56" height="18">
+        <img src="{% static 'img/wallets/vodacom.svg' %}" alt="Vodacom" height="28">
+        <img src="{% static 'img/wallets/airtel.svg' %}" alt="Airtel" height="28">
+        <img src="{% static 'img/wallets/tigo.svg' %}" alt="Tigo" height="28">
+        <img src="{% static 'img/wallets/halotel.svg' %}" alt="Halotel" height="28">
       </div>
       <button class="btn" type="submit">
         {% if is_download %}Pay &amp; download{% else %}Pay &amp; watch{% endif %}

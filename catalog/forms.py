@@ -10,24 +10,34 @@ User = get_user_model()
 
 class PayForm(forms.Form):
     phone = forms.CharField(
-        max_length=20,
-        label="",
+        max_length=15,
+        label="INGIZA NAMBA YA MALIPO",
         widget=forms.TextInput(
             attrs={
-                "placeholder": "Enter number",
-                "inputmode": "tel",
+                "id": "id_phone",
+                "placeholder": "7XXXXXXXX",
+                "inputmode": "numeric",
                 "autocomplete": "tel",
-                "aria-label": "Mobile money number",
+                "aria-label": "INGIZA NAMBA YA MALIPO",
+                "class": "phone-local",
             }
         ),
     )
 
     def clean_phone(self):
         raw = self.cleaned_data["phone"].strip()
-        normalized = normalize_phone(raw)
+        # User types local digits after +255 (e.g. 712345678)
+        digits = "".join(c for c in raw if c.isdigit())
+        if digits.startswith("255"):
+            pass
+        elif digits.startswith("0") and len(digits) == 10:
+            digits = "255" + digits[1:]
+        elif len(digits) == 9:
+            digits = "255" + digits
+        normalized = normalize_phone(digits)
         if not (normalized.startswith("255") and len(normalized) == 12):
             raise forms.ValidationError(
-                "Enter a valid Tanzania mobile number (e.g. 07XXXXXXXX)."
+                "Ingiza namba sahihi (mfano 712345678)."
             )
         return normalized
 
