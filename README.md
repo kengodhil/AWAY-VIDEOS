@@ -24,11 +24,32 @@ Admins can upload/delete videos, view payments, and add other admins.
 | Username | `admin` |
 | Password | `admin123` |
 
-The account is **created automatically** on every deploy (`seed_demo` in build + start). No Shell required.
+The account is **created automatically** on every deploy (`seed_demo` in build + start).
 
-**Change this password** before public use (or add a new admin and stop using the default).
+## Neon Postgres (Render)
 
-## Run locally
+The app uses **`DATABASE_URL`**. If it is set, Django connects to Neon; if not, it uses SQLite (local).
+
+1. Open [Neon](https://console.neon.tech/) → create a project (or use an existing one).
+2. **Dashboard → Connection details** → copy the **URI** (looks like):
+   ```text
+   postgresql://USER:PASSWORD@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require
+   ```
+3. On **Render** → your `away-videos` service → **Environment** → **Add Environment Variable**:
+   - **Key:** `DATABASE_URL`
+   - **Value:** paste the Neon URI (keep `?sslmode=require`)
+4. Save → **Manual Deploy** (or wait for auto-deploy from `main`).
+5. On start, the app runs `migrate` + `seed_demo` against Neon.
+6. Login: https://your-app.onrender.com/studio/login/ — `admin` / `admin123`
+
+Local optional Neon:
+
+```bash
+# in .env
+DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require
+```
+
+## Run locally (SQLite by default)
 
 ```bash
 pip install -r requirements.txt
@@ -49,12 +70,7 @@ SNIPPE_API_KEY=snp_...
 SNIPPE_WEBHOOK_URL=https://your-domain/webhooks/snippe/
 ```
 
-## Render
-
-- Build runs: migrate + `seed_demo`
-- Start runs: migrate + `seed_demo` + gunicorn
-
-If the dashboard **Start Command** was set manually, use:
+## Render start command
 
 ```text
 python manage.py migrate --no-input && python manage.py seed_demo && gunicorn awayvideos.wsgi:application
