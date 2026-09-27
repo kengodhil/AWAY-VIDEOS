@@ -3,7 +3,7 @@ services:
     name: away-videos
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn awayvideos.wsgi:application"
+    startCommand: "python manage.py migrate --no-input && gunicorn awayvideos.wsgi:application"
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
