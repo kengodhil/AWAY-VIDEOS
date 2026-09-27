@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 36" role="img" aria-label="Vodacom M-Pesa">
+  <circle cx="14" cy="18" r="12" fill="#ee3124"/>
+  <path fill="#fff" d="M14.1 26.5c-4.6.01-9.4-3.9-9.4-10.2 0-4.2 2.2-8.2 5.1-10.6C12.6 3.4 16.4 1.9 19.9 1.9c.4 0 .9.03 1.2.13-3 .6-5.5 3.5-5.5 6.7 5.1 1.2 7.4 4.3 7.4 8.6 0 4.3-3.3 9-9 9.1"/>
+  <text x="32" y="23" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="#ee3124">Vodacom</text>
+</svg>

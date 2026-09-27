@@ -16,7 +16,6 @@
       >
         <source src="{{ video.video_file.url }}" type="video/mp4">
       </video>
-      <span class="teaser-badge">5s teaser</span>
       {% elif video.thumbnail %}
       <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}">
       {% else %}
@@ -42,34 +41,28 @@
   const teasers = document.querySelectorAll("[data-teaser]");
   const LIMIT = 5;
   teasers.forEach(function (v) {
-    let playing = false;
-    const tryPlay = function () {
-      if (playing) return;
-      playing = true;
-      v.currentTime = 0;
-      const p = v.play();
-      if (p && p.catch) p.catch(function () {});
-    };
+    const wrap = v.closest(".teaser-wrap") || v;
     v.addEventListener("timeupdate", function () {
       if (v.currentTime >= LIMIT) {
         v.pause();
-        v.currentTime = LIMIT;
+        v.currentTime = 0;
       }
     });
-    v.addEventListener("ended", function () {
+    wrap.addEventListener("mouseenter", function () {
+      v.currentTime = 0;
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+    });
+    wrap.addEventListener("mouseleave", function () {
+      v.pause();
       v.currentTime = 0;
     });
-    if ("IntersectionObserver" in window) {
-      const io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting && e.intersectionRatio > 0.4) tryPlay();
-          else { v.pause(); playing = false; }
-        });
-      }, { threshold: [0, 0.4, 0.7] });
-      io.observe(v);
-    } else {
-      tryPlay();
-    }
+    // Touch: tap to preview briefly
+    wrap.addEventListener("touchstart", function () {
+      v.currentTime = 0;
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+    }, { passive: true });
   });
 })();
 </script>

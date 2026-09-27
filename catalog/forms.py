@@ -11,12 +11,13 @@ User = get_user_model()
 class PayForm(forms.Form):
     phone = forms.CharField(
         max_length=20,
-        label="Mobile money number",
+        label="",
         widget=forms.TextInput(
             attrs={
-                "placeholder": "07XXXXXXXX or 2557XXXXXXXX",
+                "placeholder": "Enter number",
                 "inputmode": "tel",
                 "autocomplete": "tel",
+                "aria-label": "Mobile money number",
             }
         ),
     )
