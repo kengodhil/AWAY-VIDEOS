@@ -2,21 +2,32 @@
 
 No-login public video site. Visitors watch a **5-second teaser**, pay **TZS 2,000** via Snippe (mobile money USSD) to unlock the full video for this browser session, and optionally pay **TZS 1,000** to download.
 
-## Public flow
+## Why videos disappear after redeploy
 
-1. Home page — video grid (2 columns on phones).
-2. Each card autoplays a muted 5s teaser.
-3. **Watch now** → phone number → USSD → full player.
-4. Player download icon → pay TZS 1,000 → download.
-5. New browser session → pay again to watch.
+Render **deletes the server disk** on every deploy. Titles stay in **Neon** (database), but video **files** were only on that disk — so the home page showed titles with no playable file.
+
+**Fix:** store uploads on **Cloudinary** (free). Files stay online after every redeploy.
+
+## Cloudinary setup (required on Render)
+
+1. Sign up free: https://cloudinary.com/users/register/free  
+2. Dashboard → **API Keys** → copy **API Environment variable**  
+   Looks like:
+   ```text
+   cloudinary://123456789012345:xxxxxxxxxxxxxxxx@your_cloud_name
+   ```
+3. **Render** → `away-videos` → **Environment** → Add:
+   - **Key:** `CLOUDINARY_URL`
+   - **Value:** paste that full string
+4. Save → **Manual Deploy**
+5. Open **Studio** → delete old broken videos (file was lost) → **Upload video again**  
+   New uploads go to Cloudinary and **survive redeploys**.
+
+## Neon Postgres
+
+Set `DATABASE_URL` on Render to your Neon connection URI.
 
 ## Admin (Studio)
-
-Bottom-left **Admin** opens branded login at `/studio/login/` (same teal/white UI — not Django’s default admin).
-
-Admins can upload/delete videos, view payments, and add other admins.
-
-### Login credentials
 
 | Field | Value |
 |--------|--------|
@@ -24,50 +35,15 @@ Admins can upload/delete videos, view payments, and add other admins.
 | Username | `admin` |
 | Password | `admin123` |
 
-The account is **created automatically** on every deploy (`seed_demo` in build + start).
-
-## Neon Postgres (Render)
-
-The app uses **`DATABASE_URL`**. If it is set, Django connects to Neon; if not, it uses SQLite (local).
-
-1. Open [Neon](https://console.neon.tech/) → create a project (or use an existing one).
-2. **Dashboard → Connection details** → copy the **URI** (looks like):
-   ```text
-   postgresql://USER:PASSWORD@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require
-   ```
-3. On **Render** → your `away-videos` service → **Environment** → **Add Environment Variable**:
-   - **Key:** `DATABASE_URL`
-   - **Value:** paste the Neon URI (keep `?sslmode=require`)
-4. Save → **Manual Deploy** (or wait for auto-deploy from `main`).
-5. On start, the app runs `migrate` + `seed_demo` against Neon.
-6. Login: https://your-app.onrender.com/studio/login/ — `admin` / `admin123`
-
-Local optional Neon:
-
-```bash
-# in .env
-DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require
-```
-
-## Run locally (SQLite by default)
+## Run locally
 
 ```bash
 pip install -r requirements.txt
 copy .env.example .env
+# optional: DATABASE_URL=... and CLOUDINARY_URL=...
 python manage.py migrate
 python manage.py seed_demo
 python manage.py runserver
-```
-
-- Site: http://127.0.0.1:8000/
-- Studio: http://127.0.0.1:8000/studio/login/ — `admin` / `admin123`
-
-## Snippe live keys
-
-```
-SNIPPE_MOCK=false
-SNIPPE_API_KEY=snp_...
-SNIPPE_WEBHOOK_URL=https://your-domain/webhooks/snippe/
 ```
 
 ## Render start command
