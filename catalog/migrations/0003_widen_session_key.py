@@ -1,0 +1,16 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("catalog", "0002_video_cdn_urls"),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name="payment",
+            name="session_key",
+            field=models.CharField(db_index=True, max_length=255),
+        ),
+    ]
