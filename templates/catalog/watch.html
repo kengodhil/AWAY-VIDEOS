@@ -1,0 +1,13 @@
+{% extends "catalog/base.html" %}
+{% block title %}Watch {{ video.title }}{% endblock %}
+{% block content %}
+<section>
+  <p class="eyebrow">Unlocked</p>
+  <h1>{{ video.title }}</h1>
+  <video class="player" controls playsinline>
+    <source src="{{ video.video_file.url }}">
+    Your browser cannot play this video.
+  </video>
+  <p>{{ video.description }}</p>
+</section>
+{% endblock %}

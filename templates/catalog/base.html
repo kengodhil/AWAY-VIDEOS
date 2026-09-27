@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Adu Reel{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% if user.is_authenticated %}{% url 'video_list' %}{% else %}{% url 'home' %}{% endif %}">Adu Reel</a>
+    <nav class="nav">
+      {% if user.is_authenticated %}
+        <a href="{% url 'video_list' %}">Videos</a>
+        {% if user.is_staff %}<a href="{% url 'studio' %}">Admin</a>{% endif %}
+        <span class="who">{{ user.get_full_name|default:user.username }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link-btn" type="submit">Sign out</button></form>
+      {% else %}
+        <a href="{% url 'login' %}">Sign in</a>
+        <a class="btn btn-small" href="{% url 'register' %}">Create account</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="page">
+    {% if messages %}
+      <ul class="flash">
+        {% for message in messages %}
+          <li class="flash-{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

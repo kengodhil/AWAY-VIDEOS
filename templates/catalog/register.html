@@ -1,0 +1,21 @@
+{% extends "catalog/base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Create your account</h1>
+  <p class="muted">Use this account to pay and watch videos.</p>
+  <form method="post" class="stack">{% csrf_token %}
+    {% for field in form %}
+      <label>
+        {{ field.label }}
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </label>
+    {% endfor %}
+    {{ form.non_field_errors }}
+    <button class="btn" type="submit">Create account</button>
+  </form>
+  <p class="muted">Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+</section>
+{% endblock %}

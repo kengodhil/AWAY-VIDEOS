@@ -1,0 +1,77 @@
+{% extends "catalog/base.html" %}
+{% block title %}Admin studio{% endblock %}
+{% block content %}
+<div class="section-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Manage videos and users</h1>
+  </div>
+  <a class="btn" href="{% url 'add_video' %}">Add video</a>
+</div>
+
+<section class="card">
+  <h2>Videos</h2>
+  <table>
+    <thead><tr><th>Title</th><th>Price</th><th></th></tr></thead>
+    <tbody>
+      {% for video in videos %}
+        <tr>
+          <td>{{ video.title }}</td>
+          <td>TZS {{ video.price }}</td>
+          <td>
+            <form method="post" action="{% url 'delete_video' video.pk %}" onsubmit="return confirm('Delete this video?');">{% csrf_token %}
+              <button class="link-btn danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">No videos yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Users</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Phone</th><th></th></tr></thead>
+    <tbody>
+      {% for person in users %}
+        <tr>
+          <td>{{ person.get_full_name|default:person.username }} <small>{{ person.email }}</small></td>
+          <td>{{ person.phone }}</td>
+          <td>
+            {% if person != user %}
+            <form method="post" action="{% url 'delete_user' person.pk %}" onsubmit="return confirm('Delete this user?');">{% csrf_token %}
+              <button class="link-btn danger" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">No users yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Recent payments</h2>
+  <table>
+    <thead><tr><th>Order</th><th>User</th><th>Video</th><th>Amount</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for payment in payments %}
+        <tr>
+          <td>{{ payment.order_id }}</td>
+          <td>{{ payment.user }}</td>
+          <td>{{ payment.video }}</td>
+          <td>TZS {{ payment.amount }}</td>
+          <td>{{ payment.status }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No payments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "catalog/base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>{{ heading }}</h1>
+  <form method="post" enctype="multipart/form-data" class="stack">{% csrf_token %}
+    {% for field in form %}
+      <label>
+        {{ field.label }}
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </label>
+    {% endfor %}
+    {{ form.non_field_errors }}
+    <button class="btn" type="submit">Save video</button>
+  </form>
+</section>
+{% endblock %}

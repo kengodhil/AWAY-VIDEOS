@@ -1,0 +1,19 @@
+{% extends "catalog/base.html" %}
+{% block title %}Watch videos after a simple phone payment{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Simple video store</p>
+  <h1>Pay with your phone.<br>Then watch.</h1>
+  <p class="lead">Enter your mobile number, approve the Selcom payment on your phone, and the video unlocks. No cards. No extra steps.</p>
+  <div class="hero-actions">
+    <a class="btn" href="{% url 'register' %}">Start now</a>
+    <a class="btn btn-ghost" href="{% url 'login' %}">I already have an account</a>
+  </div>
+  <ol class="steps">
+    <li><span>1</span> Create a free account</li>
+    <li><span>2</span> Enter your mobile number</li>
+    <li><span>3</span> Approve payment on your phone</li>
+    <li><span>4</span> Watch the video</li>
+  </ol>
+</section>
+{% endblock %}

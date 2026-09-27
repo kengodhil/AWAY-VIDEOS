@@ -1,0 +1,21 @@
+{% extends "catalog/base.html" %}
+{% block title %}Pay for {{ video.title }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <p class="eyebrow">Step 2 of 3</p>
+  <h1>Pay with your phone</h1>
+  <p>You are paying <strong>TZS {{ video.price }}</strong> for <strong>{{ video.title }}</strong>.</p>
+  <form method="post" class="stack">{% csrf_token %}
+    {% for field in form %}
+      <label>
+        {{ field.label }}
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </label>
+    {% endfor %}
+    {{ form.non_field_errors }}
+    <button class="btn" type="submit">Send payment prompt</button>
+  </form>
+</section>
+{% endblock %}

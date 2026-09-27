@@ -1,0 +1,37 @@
+{% extends "catalog/base.html" %}
+{% block title %}Videos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Choose a video</h1>
+  </div>
+</div>
+{% if videos %}
+  <div class="grid">
+    {% for video in videos %}
+      <article class="video-card">
+        {% if video.thumbnail %}
+          <img src="{{ video.thumbnail.url }}" alt="">
+        {% else %}
+          <div class="poster">{{ video.title|make_list|first }}</div>
+        {% endif %}
+        <div class="video-card-body">
+          <h2>{{ video.title }}</h2>
+          <p>{{ video.description|truncatewords:18 }}</p>
+          <div class="row">
+            <strong>TZS {{ video.price }}</strong>
+            {% if video.id in paid_ids %}
+              <a class="btn btn-small" href="{% url 'watch_video' video.pk %}">Watch</a>
+            {% else %}
+              <a class="btn btn-small" href="{% url 'video_detail' video.pk %}">Pay to watch</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">No videos yet. An admin can add them from the Admin page.</p>
+{% endif %}
+{% endblock %}

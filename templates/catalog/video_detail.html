@@ -1,0 +1,25 @@
+{% extends "catalog/base.html" %}
+{% block title %}{{ video.title }}{% endblock %}
+{% block content %}
+<article class="split">
+  <div>
+    {% if video.thumbnail %}
+      <img class="hero-img" src="{{ video.thumbnail.url }}" alt="">
+    {% else %}
+      <div class="poster tall">{{ video.title }}</div>
+    {% endif %}
+  </div>
+  <div>
+    <p class="eyebrow">Video</p>
+    <h1>{{ video.title }}</h1>
+    <p>{{ video.description }}</p>
+    <p class="price">TZS {{ video.price }}</p>
+    {% if unlocked %}
+      <a class="btn" href="{% url 'watch_video' video.pk %}">Watch now</a>
+    {% else %}
+      <a class="btn" href="{% url 'pay_video' video.pk %}">Pay with mobile number</a>
+      <p class="muted">You will get a Selcom prompt on your phone. After you approve it, the video unlocks.</p>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

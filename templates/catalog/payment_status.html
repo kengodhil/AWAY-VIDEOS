@@ -1,0 +1,30 @@
+{% extends "catalog/base.html" %}
+{% block title %}Waiting for payment{% endblock %}
+{% block content %}
+<section class="card narrow center">
+  <p class="eyebrow">Step 3 of 3</p>
+  <h1>Approve on your phone</h1>
+  <p>A payment request was sent to <strong>{{ payment.phone }}</strong> for <strong>TZS {{ payment.amount }}</strong>.</p>
+  <p class="status-pill" id="status-pill">{{ payment.status }}</p>
+  <p class="muted" id="status-msg">{{ payment.selcom_message }}</p>
+  {% if mock and payment.status == "PENDING" %}
+    <form method="post" action="{% url 'mock_complete_payment' payment.order_id %}">{% csrf_token %}
+      <button class="btn" type="submit">I approved the payment (demo)</button>
+    </form>
+    <p class="muted">Demo mode is on. Live Selcom credentials are not required.</p>
+  {% endif %}
+</section>
+<script>
+  const statusUrl = "{% url 'payment_status_json' payment.order_id %}";
+  async function poll() {
+    const res = await fetch(statusUrl);
+    const data = await res.json();
+    document.getElementById("status-pill").textContent = data.status;
+    if (data.message) document.getElementById("status-msg").textContent = data.message;
+    if (data.status === "COMPLETED" && data.watch_url) {
+      window.location = data.watch_url;
+    }
+  }
+  setInterval(poll, 3000);
+</script>
+{% endblock %}
