@@ -1,15 +1,84 @@
 {% extends "catalog/base.html" %}
-{% block title %}Watch   hot videos 
-{% endblock %}
+{% block title %}AWAY Videos — Watch teasers{% endblock %}
 {% block content %}
-<section class="hero">
-  <p class="eyebrow">Simple video store</p>
-  <h1>Pay with your phone.<br>Then watch.</h1>
-  <p class="lead">Enter your mobile number.</p>
-  <div class="hero-actions">
-    <a class="btn" href="{% url 'register' %}">Start now</a>
-    <a class="btn btn-ghost" href="{% url 'login' %}">I already have an account</a>
-  </div>
- 
+<section class="hero-lite">
+  <p class="eyebrow">AWAY Videos</p>
+  <h1>Watch the teaser. Pay to unlock.</h1>
+  <p class="lead">Preview up to 5 seconds free. Full video is TZS 2,000. Download is TZS 1,000 after you unlock.</p>
 </section>
+
+<section class="video-grid" aria-label="Videos">
+  {% for video in videos %}
+  <article class="v-card">
+    <div class="teaser-wrap">
+      {% if video.video_file %}
+      <video
+        class="teaser"
+        muted
+        playsinline
+        preload="metadata"
+        {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}
+        data-teaser
+      >
+        <source src="{{ video.video_file.url }}" type="video/mp4">
+      </video>
+      <span class="teaser-badge">5s teaser</span>
+      {% elif video.thumbnail %}
+      <img src="{{ video.thumbnail.url }}" alt="{{ video.title }}">
+      {% else %}
+      <div class="poster">▶</div>
+      {% endif %}
+    </div>
+    <div class="v-card-body">
+      <h2>{{ video.title }}</h2>
+      {% if video.description %}<p class="muted clip">{{ video.description|truncatechars:80 }}</p>{% endif %}
+      <div class="v-card-meta">
+        <span class="price-tag">TZS {{ video.watch_price|floatformat:0 }}</span>
+        <a class="btn btn-watch" href="{% url 'pay_video' video.pk 'watch' %}">Watch now</a>
+      </div>
+    </div>
+  </article>
+  {% empty %}
+  <p class="muted">No videos yet. Add some in Django admin.</p>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const teasers = document.querySelectorAll("[data-teaser]");
+  const LIMIT = 5;
+  teasers.forEach(function (v) {
+    let playing = false;
+    const tryPlay = function () {
+      if (playing) return;
+      playing = true;
+      v.currentTime = 0;
+      const p = v.play();
+      if (p && p.catch) p.catch(function () {});
+    };
+    v.addEventListener("timeupdate", function () {
+      if (v.currentTime >= LIMIT) {
+        v.pause();
+        v.currentTime = LIMIT;
+      }
+    });
+    v.addEventListener("ended", function () {
+      v.currentTime = 0;
+    });
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting && e.intersectionRatio > 0.4) tryPlay();
+          else { v.pause(); playing = false; }
+        });
+      }, { threshold: [0, 0.4, 0.7] });
+      io.observe(v);
+    } else {
+      tryPlay();
+    }
+  });
+})();
+</script>
 {% endblock %}

@@ -1,30 +1,51 @@
 {% extends "catalog/base.html" %}
-{% block title %}Waiting for payment{% endblock %}
+{% block title %}Payment · AWAY Videos{% endblock %}
 {% block content %}
-<section class="card narrow center">
-  <p class="eyebrow">Step 3 of 3</p>
-  <h1>Approve on your phone</h1>
-  <p>A payment request was sent to <strong>{{ payment.phone }}</strong> for <strong>TZS {{ payment.amount }}</strong>.</p>
-  <p class="status-pill" id="status-pill">{{ payment.status }}</p>
-  <p class="muted" id="status-msg">{{ payment.selcom_message }}</p>
-  {% if mock and payment.status == "PENDING" %}
-    <form method="post" action="{% url 'mock_complete_payment' payment.order_id %}">{% csrf_token %}
-      <button class="btn" type="submit">I approved the payment (demo)</button>
+<section class="pay-shell">
+  <div class="card pay-card center">
+    <p class="eyebrow">Payment status</p>
+    <h1>{{ payment.video.title }}</h1>
+    <p class="status-pill" id="status-pill">{{ payment.status }}</p>
+    <p class="muted" id="status-msg">{{ payment.snippe_message }}</p>
+    <p class="muted">Amount: <strong>TZS {{ payment.amount|floatformat:0 }}</strong></p>
+
+    {% if mock and payment.status == "PENDING" %}
+    <form method="post" action="{% url 'mock_complete_payment' payment.order_id %}">
+      {% csrf_token %}
+      <button class="btn" type="submit">Confirm demo payment</button>
     </form>
-    <p class="muted">Demo mode is on. Live Selcom credentials are not required.</p>
-  {% endif %}
+    <p class="muted small-note">Demo mode — no real USSD. Click to simulate success.</p>
+    {% else %}
+    <p class="muted small-note">Approve the prompt on your phone. This page updates automatically.</p>
+    {% endif %}
+
+    <p class="muted small-note"><a href="{% url 'home' %}">← Back to videos</a></p>
+  </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
 <script>
-  const statusUrl = "{% url 'payment_status_json' payment.order_id %}";
-  async function poll() {
-    const res = await fetch(statusUrl);
-    const data = await res.json();
-    document.getElementById("status-pill").textContent = data.status;
-    if (data.message) document.getElementById("status-msg").textContent = data.message;
-    if (data.status === "COMPLETED" && data.watch_url) {
-      window.location = data.watch_url;
-    }
+(function () {
+  const pill = document.getElementById("status-pill");
+  const msg = document.getElementById("status-msg");
+  function poll() {
+    fetch("{% url 'payment_status_json' payment.order_id %}")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (pill) pill.textContent = data.status;
+        if (msg) msg.textContent = data.message || "";
+        if (data.status === "COMPLETED" && data.next_url) {
+          window.location.href = data.next_url;
+          return;
+        }
+        if (data.status === "PENDING") setTimeout(poll, 2500);
+      })
+      .catch(function () { setTimeout(poll, 4000); });
   }
-  setInterval(poll, 3000);
+  {% if payment.status == "PENDING" %}
+  setTimeout(poll, 2000);
+  {% endif %}
+})();
 </script>
 {% endblock %}
