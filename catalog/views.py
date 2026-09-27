@@ -15,7 +15,7 @@ from .cloudinary_upload import CloudinaryUploadError, upload_image, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
-from .utils import ensure_session, session_has_access
+from .utils import ensure_session, session_has_access, visitor_id
 
 User = get_user_model()
 staff_required = user_passes_test(lambda u: u.is_authenticated and u.is_staff)
@@ -47,7 +47,7 @@ def pay_video(request, pk, purpose):
         phone = form.cleaned_data.get("phone") or "255700000000"
         order_id = uuid.uuid4().hex
         payment = Payment.objects.create(
-            session_key=request.session.session_key,
+            session_key=visitor_id(request),
             video=video,
             purpose=purpose,
             order_id=order_id,
@@ -74,9 +74,7 @@ def pay_video(request, pk, purpose):
 
 def payment_status(request, order_id):
     ensure_session(request)
-    payment = get_object_or_404(
-        Payment, order_id=order_id, session_key=request.session.session_key
-    )
+    payment = get_object_or_404(Payment, order_id=order_id, session_key=visitor_id(request))
     if payment.status == Payment.Status.COMPLETED:
         if payment.purpose == Payment.Purpose.WATCH:
             return redirect("watch_video", pk=payment.video_id)
@@ -90,9 +88,7 @@ def payment_status(request, order_id):
 
 def payment_status_json(request, order_id):
     ensure_session(request)
-    payment = get_object_or_404(
-        Payment, order_id=order_id, session_key=request.session.session_key
-    )
+    payment = get_object_or_404(Payment, order_id=order_id, session_key=visitor_id(request))
 
     if payment.status == Payment.Status.PENDING and not settings.SNIPPE_MOCK:
         if payment.snippe_reference:
@@ -130,9 +126,7 @@ def payment_status_json(request, order_id):
 @require_POST
 def mock_complete_payment(request, order_id):
     ensure_session(request)
-    payment = get_object_or_404(
-        Payment, order_id=order_id, session_key=request.session.session_key
-    )
+    payment = get_object_or_404(Payment, order_id=order_id, session_key=visitor_id(request))
     payment.mark_completed(message="ok")
     if payment.purpose == Payment.Purpose.WATCH:
         return redirect("watch_video", pk=payment.video_id)
