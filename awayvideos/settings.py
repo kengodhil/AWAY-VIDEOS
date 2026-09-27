@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -37,9 +37,10 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# Cloudinary keeps videos after Render redeploy (disk is wiped each deploy)
-_cloudinary_url = (os.getenv("CLOUDINARY_URL") or "").strip()
+# ─── Cloudinary CDN (videos/images survive Render redeploys) ─────────────────
+_cloudinary_url = (os.getenv("CLOUDINARY_URL") or "").strip().strip("'\"")
 USE_CLOUDINARY = bool(_cloudinary_url)
+
 if USE_CLOUDINARY:
     INSTALLED_APPS = [
         "django.contrib.admin",
@@ -52,6 +53,89 @@ if USE_CLOUDINARY:
         "cloudinary",
         "catalog.apps.CatalogConfig",
     ]
+
+    # Parse cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    _cu = urlparse(_cloudinary_url)
+    _cloud_name = (_cu.hostname or "").strip()
+    _api_key = unquote(_cu.username or "")
+    _api_secret = unquote(_cu.password or "")
+
+    # Optional overrides (private CDN / custom CNAME)
+    _private_cdn = os.getenv("CLOUDINARY_PRIVATE_CDN", "false").lower() == "true"
+    _secure_distribution = (os.getenv("CLOUDINARY_SECURE_DISTRIBUTION") or "").strip()
+
+    import cloudinary
+
+    cloudinary.config(
+        cloud_name=_cloud_name,
+        api_key=_api_key,
+        api_secret=_api_secret,
+        secure=True,  # HTTPS CDN URLs (res.cloudinary.com)
+        private_cdn=_private_cdn,
+        secure_distribution=_secure_distribution or None,
+    )
+
+    CLOUDINARY_STORAGE = {
+        "CLOUD_NAME": _cloud_name,
+        "API_KEY": _api_key,
+        "API_SECRET": _api_secret,
+        # CDN delivery
+        "SECURE": True,  # https://res.cloudinary.com/...
+        "MEDIA_TAG": "away-videos-media",
+        "PREFIX": "away-videos",
+        "INVALID_VIDEO_ERROR_MESSAGE": "Please upload a valid video file (mp4, webm, mov).",
+        "STATIC_VIDEOS_EXTENSIONS": [
+            "mp4",
+            "webm",
+            "mov",
+            "m4v",
+            "avi",
+            "mkv",
+            "ogv",
+            "3gp",
+        ],
+        "STATIC_IMAGES_EXTENSIONS": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "webp",
+            "bmp",
+            "tif",
+            "tiff",
+        ],
+    }
+    if _private_cdn:
+        CLOUDINARY_STORAGE["SECURE"] = True
+
+    # Public CDN base URL (used by templates / .url on FileFields)
+    if _secure_distribution:
+        MEDIA_URL = f"https://{_secure_distribution}/"
+    elif _private_cdn and _cloud_name:
+        MEDIA_URL = f"https://{_cloud_name}-res.cloudinary.com/"
+    else:
+        MEDIA_URL = f"https://res.cloudinary.com/{_cloud_name}/"
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
+else:
+    MEDIA_URL = "/media/"
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
+
+MEDIA_ROOT = BASE_DIR / "media"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -118,32 +202,6 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-if USE_CLOUDINARY:
-    # CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
-    STORAGES = {
-        "default": {
-            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-        },
-    }
-    CLOUDINARY_STORAGE = {
-        "PREFIX": "away-videos",
-    }
-else:
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-        },
-    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
