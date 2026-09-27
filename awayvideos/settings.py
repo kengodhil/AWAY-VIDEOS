@@ -37,6 +37,22 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
+# Cloudinary keeps videos after Render redeploy (disk is wiped each deploy)
+_cloudinary_url = (os.getenv("CLOUDINARY_URL") or "").strip()
+USE_CLOUDINARY = bool(_cloudinary_url)
+if USE_CLOUDINARY:
+    INSTALLED_APPS = [
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+        "cloudinary_storage",
+        "cloudinary",
+        "catalog.apps.CatalogConfig",
+    ]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -67,7 +83,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "awayvideos.wsgi.application"
 
-# Neon Postgres via DATABASE_URL (from env / Render). No URL → local SQLite.
 _database_url = (os.getenv("DATABASE_URL") or "").strip().strip("'\"")
 if _database_url.startswith("postgres"):
     tmp_postgres = urlparse(_database_url)
@@ -103,17 +118,32 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-    },
-}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+if USE_CLOUDINARY:
+    # CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
+    CLOUDINARY_STORAGE = {
+        "PREFIX": "away-videos",
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
