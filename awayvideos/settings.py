@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
+from urllib.parse import parse_qsl, urlparse
 
-import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,16 +67,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "awayvideos.wsgi.application"
 
-# Neon / any Postgres: set DATABASE_URL. Local default: SQLite.
-_default_db = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
-DATABASES = {
-    "default": dj_database_url.config(
-        default=_default_db,
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=os.getenv("DATABASE_URL", "").startswith("postgres"),
-    )
-}
+# Neon Postgres via DATABASE_URL (from env / Render). No URL → local SQLite.
+_database_url = (os.getenv("DATABASE_URL") or "").strip().strip("'\"")
+if _database_url.startswith("postgres"):
+    tmp_postgres = urlparse(_database_url)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": (tmp_postgres.path or "/neondb").lstrip("/") or "neondb",
+            "USER": tmp_postgres.username,
+            "PASSWORD": tmp_postgres.password,
+            "HOST": tmp_postgres.hostname,
+            "PORT": tmp_postgres.port or 5432,
+            "OPTIONS": dict(parse_qsl(tmp_postgres.query)),
+            "CONN_MAX_AGE": 600,
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 6}},
