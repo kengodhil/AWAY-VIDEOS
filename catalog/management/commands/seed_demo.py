@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = "Create a demo Django admin account for managing videos."
+    help = "Create the default AWAY Videos studio admin account."
 
     def handle(self, *args, **options):
         User = get_user_model()
@@ -15,4 +15,8 @@ class Command(BaseCommand):
             email="admin@awayvideos.local",
             password="admin123",
         )
-        self.stdout.write(self.style.SUCCESS("Created admin / admin123 — use /admin/ to add videos"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Created admin / admin123 — sign in at /studio/login/"
+            )
+        )
