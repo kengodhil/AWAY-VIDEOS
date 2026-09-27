@@ -107,8 +107,13 @@ SNIPPE_API_KEY = os.getenv("SNIPPE_API_KEY", "")
 SNIPPE_WEBHOOK_URL = os.getenv("SNIPPE_WEBHOOK_URL", "")
 SNIPPE_MOCK = os.getenv("SNIPPE_MOCK", "true").lower() == "true"
 
+# Cookie sessions: no django_session table needed (avoids Render SQLite migrate gaps)
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
