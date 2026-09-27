@@ -4,10 +4,11 @@
 <section class="watch-shell">
   <div class="player-frame">
     {% if video.video_url %}
-    <video class="player" controls playsinline autoplay
-      {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}>
-      <source src="{{ video.video_url }}" type="video/mp4">
-    </video>
+    <video class="player" controls playsinline autoplay preload="auto"
+      {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
+      src="{{ video.video_url }}"></video>
+    {% else %}
+    <div class="poster" style="min-height:40vh">▶</div>
     {% endif %}
     <div class="player-actions">
       {% if can_download %}

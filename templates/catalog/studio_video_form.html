@@ -5,7 +5,6 @@
   <div class="card pay-card studio-form-card">
     <p class="eyebrow">Studio</p>
     <h1>Upload video</h1>
-    <p class="muted small-note">Use <strong>MP4</strong>, max about <strong>100MB</strong>. Files go to Cloudinary CDN.</p>
     <form method="post" enctype="multipart/form-data" class="stack">
       {% csrf_token %}
       {{ form.non_field_errors }}
@@ -13,12 +12,13 @@
       <label>
         {{ field.label }}
         {{ field }}
+        {% if field.help_text %}<span class="muted" style="font-size:.8rem">{{ field.help_text }}</span>{% endif %}
         {{ field.errors }}
       </label>
       {% endfor %}
       <button class="btn" type="submit">Save video</button>
     </form>
-    <p class="muted small-note"><a href="{% url 'studio_dashboard' %}">← Back to dashboard</a></p>
+    <p class="muted small-note"><a href="{% url 'studio_dashboard' %}">← Back</a></p>
   </div>
 </section>
 {% endblock %}

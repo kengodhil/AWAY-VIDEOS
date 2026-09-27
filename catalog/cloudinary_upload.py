@@ -14,7 +14,7 @@ class CloudinaryUploadError(Exception):
 def _ensure_configured():
     if not getattr(settings, "USE_CLOUDINARY", False):
         raise CloudinaryUploadError(
-            "CLOUDINARY_URL is not set on the server. Add it in Render → Environment."
+            "CLOUDINARY_URL is not set. Add it in Render → Environment."
         )
 
     import cloudinary
@@ -29,7 +29,7 @@ def _ensure_configured():
     api_secret = unquote(parsed.password or "")
     if not (cloud_name and api_key and api_secret):
         raise CloudinaryUploadError(
-            "CLOUDINARY_URL must look like: cloudinary://API_KEY:API_SECRET@CLOUD_NAME"
+            "CLOUDINARY_URL must be: cloudinary://API_KEY:API_SECRET@CLOUD_NAME"
         )
 
     cloudinary.config(
@@ -41,19 +41,35 @@ def _ensure_configured():
     return cloud_name
 
 
+def _mp4_delivery_url(result: dict) -> str:
+    """Build a browser-friendly HTTPS mp4 URL from an upload result."""
+    public_id = result.get("public_id") or ""
+    cloud = result.get("cloud_name") or ""
+    if not cloud:
+        cloud = getattr(settings, "CLOUDINARY_CLOUD_NAME", "") or ""
+    if public_id and cloud:
+        # Explicit mp4 + quality so HTML5 video plays (not raw codec)
+        return (
+            f"https://res.cloudinary.com/{cloud}/video/upload/"
+            f"f_mp4,q_auto/{public_id}.mp4"
+        )
+    return result.get("secure_url") or result.get("url") or ""
+
+
 def upload_video(file_obj) -> str:
-    """Upload video file; return secure CDN URL."""
     _ensure_configured()
     import cloudinary.uploader
 
-    # Only simple signed options — eager_async caused Invalid Signature
     options = {
         "resource_type": "video",
         "folder": "away-videos/videos",
+        "overwrite": True,
     }
 
     try:
         try:
+            if hasattr(file_obj, "seek"):
+                file_obj.seek(0)
             result = cloudinary.uploader.upload_large(
                 file_obj,
                 chunk_size=6 * 1024 * 1024,
@@ -67,20 +83,17 @@ def upload_video(file_obj) -> str:
         msg = str(exc)
         if "Invalid Signature" in msg or "Invalid signature" in msg:
             raise CloudinaryUploadError(
-                "Invalid Signature: check CLOUDINARY_URL on Render. "
-                "Copy the full API Environment variable from Cloudinary → API Keys "
-                "(cloudinary://KEY:SECRET@cloud_name) with no extra spaces or quotes."
+                "Invalid Signature: re-copy CLOUDINARY_URL from Cloudinary → API Keys."
             ) from exc
         raise CloudinaryUploadError(msg) from exc
 
-    url = result.get("secure_url") or result.get("url")
+    url = _mp4_delivery_url(result)
     if not url:
-        raise CloudinaryUploadError("Cloudinary returned no URL. Check API keys.")
+        raise CloudinaryUploadError("Cloudinary returned no URL.")
     return url
 
 
 def upload_image(file_obj) -> str:
-    """Upload image; return secure CDN URL."""
     _ensure_configured()
     import cloudinary.uploader
 
@@ -100,5 +113,5 @@ def upload_image(file_obj) -> str:
 
     url = result.get("secure_url") or result.get("url")
     if not url:
-        raise CloudinaryUploadError("Cloudinary returned no URL for image.")
+        raise CloudinaryUploadError("Cloudinary returned no image URL.")
     return url

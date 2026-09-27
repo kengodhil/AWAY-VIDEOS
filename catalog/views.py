@@ -245,28 +245,33 @@ def studio_add_video(request):
         video = form.save(commit=False)
         video_file = request.FILES.get("video_file")
         thumb_file = request.FILES.get("thumbnail")
+        pasted_video = (form.cleaned_data.get("video_cdn") or "").strip()
+        pasted_thumb = (form.cleaned_data.get("thumbnail_cdn") or "").strip()
 
         try:
-            if getattr(settings, "USE_CLOUDINARY", False):
-                if not video_file:
-                    form.add_error("video_file", "Choose a video file.")
-                    return render(request, "catalog/studio_video_form.html", {"form": form})
+            if pasted_video:
+                video.video_cdn = pasted_video
+                video.video_file = None
+            elif video_file and getattr(settings, "USE_CLOUDINARY", False):
                 video.video_cdn = upload_video(video_file)
                 video.video_file = None
-                if thumb_file:
-                    video.thumbnail_cdn = upload_image(thumb_file)
-                    video.thumbnail = None
+            elif video_file:
+                video.video_file = video_file
             else:
-                if not video_file and not video.video_file:
-                    form.add_error("video_file", "Choose a video file.")
-                    return render(request, "catalog/studio_video_form.html", {"form": form})
-                if video_file:
-                    video.video_file = video_file
-                if thumb_file:
-                    video.thumbnail = thumb_file
+                form.add_error(None, "Upload a video file or paste a Video URL.")
+                return render(request, "catalog/studio_video_form.html", {"form": form})
+
+            if pasted_thumb:
+                video.thumbnail_cdn = pasted_thumb
+                video.thumbnail = None
+            elif thumb_file and getattr(settings, "USE_CLOUDINARY", False):
+                video.thumbnail_cdn = upload_image(thumb_file)
+                video.thumbnail = None
+            elif thumb_file:
+                video.thumbnail = thumb_file
 
             video.save()
-            messages.success(request, "Video uploaded successfully.")
+            messages.success(request, "Video saved.")
             return redirect("studio_dashboard")
         except CloudinaryUploadError as exc:
             messages.error(request, f"Upload failed: {exc}")

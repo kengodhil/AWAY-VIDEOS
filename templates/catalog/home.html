@@ -10,12 +10,11 @@
         class="teaser"
         muted
         playsinline
-        preload="auto"
+        preload="metadata"
         {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
         data-teaser
-      >
-        <source src="{{ video.video_url }}" type="video/mp4">
-      </video>
+        src="{{ video.video_url }}"
+      ></video>
       {% elif video.thumbnail_url %}
       <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}">
       {% else %}
@@ -43,42 +42,55 @@
   teasers.forEach(function (v) {
     var wrap = v.closest(".teaser-wrap") || v;
     var playing = false;
+
     function startPreview() {
       try {
         v.muted = true;
-        v.currentTime = 0;
+        if (v.readyState < 2) {
+          v.load();
+        }
+        if (v.currentTime > LIMIT || v.currentTime === 0) {
+          try { v.currentTime = 0.05; } catch (e) {}
+        }
         var p = v.play();
         if (p && p.catch) p.catch(function () {});
         playing = true;
       } catch (e) {}
     }
+
     function stopPreview() {
-      try { v.pause(); v.currentTime = 0; } catch (e) {}
+      try { v.pause(); } catch (e) {}
       playing = false;
     }
+
     v.addEventListener("timeupdate", function () {
       if (v.currentTime >= LIMIT) {
-        v.pause();
-        v.currentTime = 0;
+        try { v.currentTime = 0.05; } catch (e) {}
         if (playing) {
           var p = v.play();
           if (p && p.catch) p.catch(function () {});
+        } else {
+          v.pause();
         }
       }
     });
+
+    v.addEventListener("loadeddata", function () {
+      if (playing) startPreview();
+    });
+
     wrap.addEventListener("mouseenter", startPreview);
     wrap.addEventListener("mouseleave", stopPreview);
     wrap.addEventListener("touchstart", function () { startPreview(); }, { passive: true });
+
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
-          if (e.isIntersecting && e.intersectionRatio >= 0.35) startPreview();
+          if (e.isIntersecting && e.intersectionRatio >= 0.25) startPreview();
           else stopPreview();
         });
-      }, { threshold: [0, 0.35, 0.6] });
+      }, { threshold: [0, 0.25, 0.5] });
       io.observe(wrap);
-    } else {
-      startPreview();
     }
   });
 })();
