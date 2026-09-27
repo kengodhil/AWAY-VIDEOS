@@ -3,16 +3,21 @@ import uuid
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .forms import PayForm
+from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
 from .utils import ensure_session, session_has_access
+
+User = get_user_model()
+staff_required = user_passes_test(lambda u: u.is_authenticated and u.is_staff)
 
 
 def home(request):
@@ -226,3 +231,79 @@ def download_video(request, pk):
         filename=video.video_file.name.split("/")[-1],
     )
     return response
+
+
+# ─── Studio (branded admin UI) ───────────────────────────────────────────────
+
+def studio_login(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect("studio_dashboard")
+    form = StudioLoginForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        if not user.is_staff:
+            messages.error(request, "This account is not an admin.")
+        else:
+            login(request, user)
+            return redirect("studio_dashboard")
+    return render(request, "catalog/studio_login.html", {"form": form})
+
+
+def studio_logout(request):
+    logout(request)
+    messages.info(request, "Signed out.")
+    return redirect("home")
+
+
+@login_required(login_url="/studio/login/")
+@staff_required
+def studio_dashboard(request):
+    videos = list(Video.objects.all())
+    payments = list(Payment.objects.select_related("video")[:50])
+    payments_count = Payment.objects.count()
+    paid_count = Payment.objects.filter(status=Payment.Status.COMPLETED).count()
+    admins = list(User.objects.filter(is_staff=True).order_by("username"))
+    return render(
+        request,
+        "catalog/studio_dashboard.html",
+        {
+            "videos": videos,
+            "payments": payments,
+            "payments_count": payments_count,
+            "paid_count": paid_count,
+            "admins": admins,
+        },
+    )
+
+
+@login_required(login_url="/studio/login/")
+@staff_required
+def studio_add_video(request):
+    form = VideoForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Video uploaded.")
+        return redirect("studio_dashboard")
+    return render(request, "catalog/studio_video_form.html", {"form": form})
+
+
+@login_required(login_url="/studio/login/")
+@staff_required
+@require_POST
+def studio_delete_video(request, pk):
+    video = get_object_or_404(Video, pk=pk)
+    title = video.title
+    video.delete()
+    messages.success(request, f'Deleted "{title}".')
+    return redirect("studio_dashboard")
+
+
+@login_required(login_url="/studio/login/")
+@staff_required
+def studio_add_admin(request):
+    form = AddAdminForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        messages.success(request, f"Admin “{user.username}” created.")
+        return redirect("studio_dashboard")
+    return render(request, "catalog/studio_add_admin.html", {"form": form})
