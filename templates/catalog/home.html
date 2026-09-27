@@ -1,12 +1,6 @@
 {% extends "catalog/base.html" %}
-{% block title %}AWAY Videos — Watch teasers{% endblock %}
+{% block title %}AWAY Videos{% endblock %}
 {% block content %}
-<section class="hero-lite">
-  <p class="eyebrow">AWAY Videos</p>
-  <h1>Watch the teaser. Pay to unlock.</h1>
-  <p class="lead">Preview up to 5 seconds free. Full video is TZS 2,000. Download is TZS 1,000 after you unlock.</p>
-</section>
-
 <section class="video-grid" aria-label="Videos">
   {% for video in videos %}
   <article class="v-card">
@@ -38,8 +32,6 @@
       </div>
     </div>
   </article>
-  {% empty %}
-  <p class="muted">No videos yet. Add some in Django admin.</p>
   {% endfor %}
 </section>
 {% endblock %}
