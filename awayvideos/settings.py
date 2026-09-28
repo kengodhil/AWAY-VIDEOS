@@ -37,16 +37,22 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-BUNNY_STREAM_LIBRARY_ID = (os.getenv("BUNNY_STREAM_LIBRARY_ID") or "").strip()
-BUNNY_STREAM_API_KEY = (os.getenv("BUNNY_STREAM_API_KEY") or "").strip()
-BUNNY_STREAM_CDN_HOSTNAME = (os.getenv("BUNNY_STREAM_CDN_HOSTNAME") or "").strip()
-USE_BUNNY = bool(
-    BUNNY_STREAM_LIBRARY_ID and BUNNY_STREAM_API_KEY and BUNNY_STREAM_CDN_HOSTNAME
-)
+# ─── AWS S3 ──────────────────────────────────────────────────────────────────
+AWS_ACCESS_KEY_ID = (os.getenv("AWS_ACCESS_KEY_ID") or "").strip()
+AWS_SECRET_ACCESS_KEY = (os.getenv("AWS_SECRET_ACCESS_KEY") or "").strip()
+AWS_STORAGE_BUCKET_NAME = (os.getenv("AWS_STORAGE_BUCKET_NAME") or "").strip()
+AWS_S3_REGION_NAME = (os.getenv("AWS_S3_REGION_NAME") or "us-east-1").strip()
+AWS_S3_CUSTOM_DOMAIN = (os.getenv("AWS_S3_CUSTOM_DOMAIN") or "").strip()  # CloudFront host
+USE_S3 = bool(AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME)
 
-if USE_BUNNY:
-    _cdn = BUNNY_STREAM_CDN_HOSTNAME.replace("https://", "").replace("http://", "").rstrip("/")
+if USE_S3 and AWS_S3_CUSTOM_DOMAIN:
+    _cdn = AWS_S3_CUSTOM_DOMAIN.replace("https://", "").replace("http://", "").rstrip("/")
     MEDIA_URL = f"https://{_cdn}/"
+elif USE_S3:
+    if AWS_S3_REGION_NAME == "us-east-1":
+        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
+    else:
+        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
 else:
     MEDIA_URL = "/media/"
 
@@ -58,7 +64,7 @@ STORAGES = {
 }
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
-FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -94,7 +100,6 @@ _database_url = (os.getenv("DATABASE_URL") or "").strip().strip("'\"")
 if _database_url.startswith("postgres"):
     tmp_postgres = urlparse(_database_url)
     _opts = dict(parse_qsl(tmp_postgres.query))
-    # Neon closes idle SSL sockets; avoid long-lived pooled connections
     if "sslmode" not in _opts:
         _opts["sslmode"] = "require"
     DATABASES = {

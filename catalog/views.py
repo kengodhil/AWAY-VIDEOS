@@ -12,9 +12,9 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .bunny_upload import BunnyUploadError, delete_stream_video, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
+from .s3_upload import S3UploadError, delete_s3_object, upload_image, upload_video
 from .snippe import SnippeClient, SnippeError, is_completed
 from .utils import ensure_session, session_has_access, visitor_id
 
@@ -247,26 +247,33 @@ def studio_add_video(request):
     if request.method == "POST" and form.is_valid():
         video = form.save(commit=False)
         video_file = request.FILES.get("video_file")
+        thumb_file = request.FILES.get("thumbnail")
 
         try:
             if not video_file:
                 form.add_error("video_file", "Choose a video file.")
                 return render(request, "catalog/studio_video_form.html", {"form": form})
 
-            if getattr(settings, "USE_BUNNY", False):
-                play_url, thumb_url = upload_video(video_file, title=video.title)
-                close_old_connections()
+            if getattr(settings, "USE_S3", False):
+                play_url, _ = upload_video(video_file, title=video.title)
                 video.video_cdn = play_url
-                video.thumbnail_cdn = thumb_url
                 video.video_file = None
-                video.thumbnail = None
+                if thumb_file:
+                    video.thumbnail_cdn = upload_image(thumb_file)
+                    video.thumbnail = None
+                else:
+                    video.thumbnail_cdn = ""
+                    video.thumbnail = None
             else:
                 video.video_file = video_file
+                if thumb_file:
+                    video.thumbnail = thumb_file
 
+            close_old_connections()
             video.save()
             messages.success(request, "Video saved.")
             return redirect("studio_dashboard")
-        except BunnyUploadError as exc:
+        except S3UploadError as exc:
             messages.error(request, f"Upload failed: {exc}")
             form.add_error(None, str(exc))
         except Exception as exc:
@@ -284,9 +291,12 @@ def studio_delete_video(request, pk):
     video = get_object_or_404(Video, pk=pk)
     title = video.title
     cdn = video.video_cdn or ""
+    thumb = video.thumbnail_cdn or ""
     video.delete()
     if cdn:
-        delete_stream_video(cdn)
+        delete_s3_object(cdn)
+    if thumb:
+        delete_s3_object(thumb)
     messages.success(request, f'Deleted "{title}".')
     return redirect("studio_dashboard")
 
