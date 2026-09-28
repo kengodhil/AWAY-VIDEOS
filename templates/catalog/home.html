@@ -13,7 +13,7 @@
         preload="metadata"
         {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
         data-teaser
-        src="{{ video.video_url }}"
+        data-src="{{ video.video_url }}"
       ></video>
       {% elif video.thumbnail_url %}
       <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}">
@@ -35,29 +35,42 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 <script>
 (function () {
+  function attachSource(v, url) {
+    if (!url) return;
+    var isHls = /\.m3u8(\?|$)/i.test(url);
+    if (isHls && window.Hls && Hls.isSupported()) {
+      var hls = new Hls({ enableWorker: true, maxBufferLength: 10 });
+      hls.loadSource(url);
+      hls.attachMedia(v);
+      v._hls = hls;
+    } else if (isHls && v.canPlayType("application/vnd.apple.mpegurl")) {
+      v.src = url;
+    } else {
+      v.src = url;
+    }
+  }
+
   var teasers = document.querySelectorAll("[data-teaser]");
   var LIMIT = 5;
   teasers.forEach(function (v) {
+    var url = v.getAttribute("data-src");
+    attachSource(v, url);
     var wrap = v.closest(".teaser-wrap") || v;
     var playing = false;
 
     function startPreview() {
       try {
         v.muted = true;
-        if (v.readyState < 2) {
-          v.load();
-        }
-        if (v.currentTime > LIMIT || v.currentTime === 0) {
-          try { v.currentTime = 0.05; } catch (e) {}
-        }
+        if (v.readyState < 2) v.load();
+        try { if (v.currentTime < 0.05) v.currentTime = 0.05; } catch (e) {}
         var p = v.play();
         if (p && p.catch) p.catch(function () {});
         playing = true;
       } catch (e) {}
     }
-
     function stopPreview() {
       try { v.pause(); } catch (e) {}
       playing = false;
@@ -69,14 +82,8 @@
         if (playing) {
           var p = v.play();
           if (p && p.catch) p.catch(function () {});
-        } else {
-          v.pause();
-        }
+        } else v.pause();
       }
-    });
-
-    v.addEventListener("loadeddata", function () {
-      if (playing) startPreview();
     });
 
     wrap.addEventListener("mouseenter", startPreview);

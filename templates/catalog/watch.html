@@ -12,7 +12,7 @@
       controlslist="nodownload noplaybackrate noremoteplayback"
       disablepictureinpicture
       {% if video.thumbnail_url %}poster="{{ video.thumbnail_url }}"{% endif %}
-      src="{{ video.video_url }}"
+      data-src="{{ video.video_url }}"
     ></video>
     <button type="button" class="av-big-play" id="avBigPlay" aria-label="Play">▶</button>
     <div class="av-controls" id="avControls">
@@ -62,10 +62,23 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 <script>
 (function () {
   var video = document.getElementById("avVideo");
   if (!video) return;
+
+  var src = video.getAttribute("data-src") || "";
+  var isHls = /\.m3u8(\?|$)/i.test(src);
+  if (isHls && window.Hls && Hls.isSupported()) {
+    var hls = new Hls();
+    hls.loadSource(src);
+    hls.attachMedia(video);
+  } else if (isHls && video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = src;
+  } else if (src) {
+    video.src = src;
+  }
 
   var playBtn = document.getElementById("avPlay");
   var bigPlay = document.getElementById("avBigPlay");
@@ -77,7 +90,6 @@
   var vol = document.getElementById("avVol");
   var speedBtn = document.getElementById("avSpeedBtn");
   var speedPop = document.getElementById("avSpeedPop");
-  var shell = document.getElementById("avPlayer");
 
   function fmt(s) {
     s = Math.max(0, Math.floor(s || 0));
@@ -104,7 +116,7 @@
   video.addEventListener("pause", syncPlayUi);
 
   video.addEventListener("timeupdate", function () {
-    if (!video.duration) return;
+    if (!video.duration || !isFinite(video.duration)) return;
     var p = (video.currentTime / video.duration) * 1000;
     seek.value = p;
     fill.style.width = (p / 10) + "%";
@@ -116,7 +128,7 @@
   });
 
   seek.addEventListener("input", function () {
-    if (!video.duration) return;
+    if (!video.duration || !isFinite(video.duration)) return;
     video.currentTime = (seek.value / 1000) * video.duration;
     fill.style.width = (seek.value / 10) + "%";
   });
@@ -130,10 +142,6 @@
     video.volume = parseFloat(vol.value);
     video.muted = video.volume === 0;
     volBtn.textContent = video.muted || video.volume === 0 ? "🔇" : video.volume < 0.5 ? "🔉" : "🔊";
-  });
-  volBtn.addEventListener("dblclick", function () {
-    video.muted = !video.muted;
-    volBtn.textContent = video.muted ? "🔇" : "🔊";
   });
 
   speedBtn.addEventListener("click", function (e) {
@@ -158,8 +166,6 @@
   });
   volPop.addEventListener("click", function (e) { e.stopPropagation(); });
   speedPop.addEventListener("click", function (e) { e.stopPropagation(); });
-
-  // Block right-click save / native download menu on the video
   video.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
   video.play().catch(function () {});
