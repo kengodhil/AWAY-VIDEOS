@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from urllib.parse import parse_qsl, unquote, urlparse
+from urllib.parse import parse_qsl, urlparse
 
 from dotenv import load_dotenv
 
@@ -37,35 +37,21 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# ─── Cloudinary CDN ──────────────────────────────────────────────────────────
-_cloudinary_url = (os.getenv("CLOUDINARY_URL") or "").strip().strip("'\"")
-USE_CLOUDINARY = bool(_cloudinary_url)
-CLOUDINARY_CLOUD_NAME = ""
+# ─── Bunny.net Storage + CDN ─────────────────────────────────────────────────
+BUNNY_STORAGE_ZONE = (os.getenv("BUNNY_STORAGE_ZONE") or "").strip()
+BUNNY_STORAGE_API_KEY = (os.getenv("BUNNY_STORAGE_API_KEY") or "").strip()
+BUNNY_CDN_HOSTNAME = (os.getenv("BUNNY_CDN_HOSTNAME") or "").strip()
+BUNNY_STORAGE_HOST = (os.getenv("BUNNY_STORAGE_HOST") or "storage.bunnycdn.com").strip()
+USE_BUNNY = bool(BUNNY_STORAGE_ZONE and BUNNY_STORAGE_API_KEY and BUNNY_CDN_HOSTNAME)
 
-if USE_CLOUDINARY:
-    INSTALLED_APPS.insert(-1, "cloudinary")
-
-    _cu = urlparse(_cloudinary_url)
-    CLOUDINARY_CLOUD_NAME = (_cu.hostname or "").strip()
-    _api_key = unquote(_cu.username or "")
-    _api_secret = unquote(_cu.password or "")
-
-    import cloudinary
-
-    cloudinary.config(
-        cloud_name=CLOUDINARY_CLOUD_NAME,
-        api_key=_api_key,
-        api_secret=_api_secret,
-        secure=True,
-    )
-
-    MEDIA_URL = f"https://res.cloudinary.com/{CLOUDINARY_CLOUD_NAME}/"
+if USE_BUNNY:
+    _cdn = BUNNY_CDN_HOSTNAME.replace("https://", "").replace("http://", "").rstrip("/")
+    MEDIA_URL = f"https://{_cdn}/"
 else:
     MEDIA_URL = "/media/"
 
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Uploads go to Cloudinary via API; local FileField is optional fallback only
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -75,7 +61,6 @@ STORAGES = {
     },
 }
 
-# Allow larger video uploads (Render still caps ~100MB request body)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 

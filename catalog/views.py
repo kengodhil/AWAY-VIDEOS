@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .cloudinary_upload import CloudinaryUploadError, upload_image, upload_video
+from .bunny_upload import BunnyUploadError, upload_image, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
@@ -252,7 +252,9 @@ def studio_add_video(request):
             if pasted_video:
                 video.video_cdn = pasted_video
                 video.video_file = None
-            elif video_file and getattr(settings, "USE_CLOUDINARY", False):
+            elif video_file and getattr(settings, "USE_BUNNY", False):
+                if hasattr(video_file, "seek"):
+                    video_file.seek(0)
                 video.video_cdn = upload_video(video_file)
                 video.video_file = None
             elif video_file:
@@ -264,7 +266,9 @@ def studio_add_video(request):
             if pasted_thumb:
                 video.thumbnail_cdn = pasted_thumb
                 video.thumbnail = None
-            elif thumb_file and getattr(settings, "USE_CLOUDINARY", False):
+            elif thumb_file and getattr(settings, "USE_BUNNY", False):
+                if hasattr(thumb_file, "seek"):
+                    thumb_file.seek(0)
                 video.thumbnail_cdn = upload_image(thumb_file)
                 video.thumbnail = None
             elif thumb_file:
@@ -273,7 +277,7 @@ def studio_add_video(request):
             video.save()
             messages.success(request, "Video saved.")
             return redirect("studio_dashboard")
-        except CloudinaryUploadError as exc:
+        except BunnyUploadError as exc:
             messages.error(request, f"Upload failed: {exc}")
             form.add_error(None, str(exc))
         except Exception as exc:
