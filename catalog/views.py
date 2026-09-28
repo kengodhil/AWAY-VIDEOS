@@ -12,9 +12,9 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .bunny_upload import BunnyUploadError, delete_storage_object, upload_image, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
-from .s3_upload import S3UploadError, delete_s3_object, upload_image, upload_video
 from .snippe import SnippeClient, SnippeError, is_completed
 from .utils import ensure_session, session_has_access, visitor_id
 
@@ -254,7 +254,7 @@ def studio_add_video(request):
                 form.add_error("video_file", "Choose a video file.")
                 return render(request, "catalog/studio_video_form.html", {"form": form})
 
-            if getattr(settings, "USE_S3", False):
+            if getattr(settings, "USE_BUNNY", False):
                 play_url, _ = upload_video(video_file, title=video.title)
                 video.video_cdn = play_url
                 video.video_file = None
@@ -273,7 +273,7 @@ def studio_add_video(request):
             video.save()
             messages.success(request, "Video saved.")
             return redirect("studio_dashboard")
-        except S3UploadError as exc:
+        except BunnyUploadError as exc:
             messages.error(request, f"Upload failed: {exc}")
             form.add_error(None, str(exc))
         except Exception as exc:
@@ -294,9 +294,9 @@ def studio_delete_video(request, pk):
     thumb = video.thumbnail_cdn or ""
     video.delete()
     if cdn:
-        delete_s3_object(cdn)
+        delete_storage_object(cdn)
     if thumb:
-        delete_s3_object(thumb)
+        delete_storage_object(thumb)
     messages.success(request, f'Deleted "{title}".')
     return redirect("studio_dashboard")
 
