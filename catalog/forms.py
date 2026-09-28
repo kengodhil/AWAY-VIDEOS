@@ -49,22 +49,6 @@ class StudioLoginForm(AuthenticationForm):
 
 
 class VideoForm(forms.ModelForm):
-    video_cdn = forms.URLField(
-        required=False,
-        label="Video URL (optional)",
-        widget=forms.URLInput(
-            attrs={
-                "placeholder": "https://res.cloudinary.com/.../video.mp4",
-            }
-        ),
-        help_text="Paste a direct MP4 link if file upload fails.",
-    )
-    thumbnail_cdn = forms.URLField(
-        required=False,
-        label="Thumbnail URL (optional)",
-        widget=forms.URLInput(attrs={"placeholder": "https://.../image.jpg"}),
-    )
-
     class Meta:
         model = Video
         fields = (
@@ -74,8 +58,6 @@ class VideoForm(forms.ModelForm):
             "download_price",
             "thumbnail",
             "video_file",
-            "video_cdn",
-            "thumbnail_cdn",
         )
         widgets = {
             "title": forms.TextInput(attrs={"placeholder": "Video title"}),
@@ -92,15 +74,13 @@ class VideoForm(forms.ModelForm):
             ),
         }
 
-    def clean(self):
-        cleaned = super().clean()
-        f = cleaned.get("video_file")
-        url = (cleaned.get("video_cdn") or "").strip()
-        if not f and not url and not getattr(self.instance, "video_cdn", None):
-            raise forms.ValidationError("Upload a video file or paste a Video URL.")
-        if f and f.size and f.size > 100 * 1024 * 1024:
+    def clean_video_file(self):
+        f = self.cleaned_data.get("video_file")
+        if not f:
+            raise forms.ValidationError("Choose a video file from your device.")
+        if f.size and f.size > 100 * 1024 * 1024:
             raise forms.ValidationError("Max 100MB.")
-        return cleaned
+        return f
 
 
 class AddAdminForm(forms.Form):

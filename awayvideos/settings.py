@@ -37,15 +37,16 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# ─── Bunny.net Storage + CDN ─────────────────────────────────────────────────
-BUNNY_STORAGE_ZONE = (os.getenv("BUNNY_STORAGE_ZONE") or "").strip()
-BUNNY_STORAGE_API_KEY = (os.getenv("BUNNY_STORAGE_API_KEY") or "").strip()
-BUNNY_CDN_HOSTNAME = (os.getenv("BUNNY_CDN_HOSTNAME") or "").strip()
-BUNNY_STORAGE_HOST = (os.getenv("BUNNY_STORAGE_HOST") or "storage.bunnycdn.com").strip()
-USE_BUNNY = bool(BUNNY_STORAGE_ZONE and BUNNY_STORAGE_API_KEY and BUNNY_CDN_HOSTNAME)
+# ─── Bunny Stream ────────────────────────────────────────────────────────────
+BUNNY_STREAM_LIBRARY_ID = (os.getenv("BUNNY_STREAM_LIBRARY_ID") or "").strip()
+BUNNY_STREAM_API_KEY = (os.getenv("BUNNY_STREAM_API_KEY") or "").strip()
+BUNNY_STREAM_CDN_HOSTNAME = (os.getenv("BUNNY_STREAM_CDN_HOSTNAME") or "").strip()
+USE_BUNNY = bool(
+    BUNNY_STREAM_LIBRARY_ID and BUNNY_STREAM_API_KEY and BUNNY_STREAM_CDN_HOSTNAME
+)
 
 if USE_BUNNY:
-    _cdn = BUNNY_CDN_HOSTNAME.replace("https://", "").replace("http://", "").rstrip("/")
+    _cdn = BUNNY_STREAM_CDN_HOSTNAME.replace("https://", "").replace("http://", "").rstrip("/")
     MEDIA_URL = f"https://{_cdn}/"
 else:
     MEDIA_URL = "/media/"
@@ -53,12 +54,8 @@ else:
 MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-    },
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024

@@ -1,9 +1,5 @@
-"""Upload media to Bunny.net Edge Storage; serve via CDN pull zone."""
+"""Upload videos to Bunny Stream; serve via Stream CDN."""
 from __future__ import annotations
-
-import re
-import uuid
-from pathlib import Path
 
 import requests
 from django.conf import settings
@@ -14,67 +10,81 @@ class BunnyUploadError(Exception):
 
 
 def _cfg():
-    zone = (getattr(settings, "BUNNY_STORAGE_ZONE", "") or "").strip()
-    key = (getattr(settings, "BUNNY_STORAGE_API_KEY", "") or "").strip()
-    cdn = (getattr(settings, "BUNNY_CDN_HOSTNAME", "") or "").strip()
-    host = (getattr(settings, "BUNNY_STORAGE_HOST", "") or "storage.bunnycdn.com").strip()
-    if not zone or not key or not cdn:
+    library_id = str(getattr(settings, "BUNNY_STREAM_LIBRARY_ID", "") or "").strip()
+    api_key = (getattr(settings, "BUNNY_STREAM_API_KEY", "") or "").strip()
+    cdn = (getattr(settings, "BUNNY_STREAM_CDN_HOSTNAME", "") or "").strip()
+    if not library_id or not api_key or not cdn:
         raise BunnyUploadError(
-            "Bunny is not configured. Set BUNNY_STORAGE_ZONE, BUNNY_STORAGE_API_KEY, "
-            "and BUNNY_CDN_HOSTNAME on Render."
+            "Bunny Stream is not configured. Set BUNNY_STREAM_LIBRARY_ID, "
+            "BUNNY_STREAM_API_KEY, and BUNNY_STREAM_CDN_HOSTNAME."
         )
     cdn = cdn.replace("https://", "").replace("http://", "").rstrip("/")
-    host = host.replace("https://", "").replace("http://", "").rstrip("/")
-    return zone, key, cdn, host
+    return library_id, api_key, cdn
 
 
-def _safe_name(name: str, fallback_ext: str) -> str:
-    base = Path(name or "file").name
-    base = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip(".-") or "file"
-    if "." not in base:
-        base = f"{base}{fallback_ext}"
-    return f"{uuid.uuid4().hex[:12]}-{base}"
+def _headers(api_key: str) -> dict:
+    return {
+        "AccessKey": api_key,
+        "Accept": "application/json",
+    }
 
 
-def _put(path: str, data: bytes, content_type: str) -> str:
-    zone, key, cdn, host = _cfg()
-    url = f"https://{host}/{zone}/{path.lstrip('/')}"
+def upload_video(file_obj, title: str = "AWAY video") -> tuple[str, str]:
+    """Create Stream video + upload file. Returns (playback_url, thumbnail_url)."""
+    library_id, api_key, cdn = _cfg()
+
+    create_url = f"https://video.bunnycdn.com/library/{library_id}/videos"
     try:
-        resp = requests.put(
-            url,
-            data=data,
-            headers={
-                "AccessKey": key,
-                "Content-Type": content_type or "application/octet-stream",
-            },
-            timeout=300,
+        create = requests.post(
+            create_url,
+            headers={**_headers(api_key), "Content-Type": "application/json"},
+            json={"title": (title or "AWAY video")[:120]},
+            timeout=60,
         )
     except requests.RequestException as exc:
-        raise BunnyUploadError(f"Network error talking to Bunny: {exc}") from exc
+        raise BunnyUploadError(f"Network error creating video: {exc}") from exc
 
-    if resp.status_code not in (200, 201):
+    if create.status_code not in (200, 201):
         raise BunnyUploadError(
-            f"Bunny upload failed ({resp.status_code}): {resp.text[:300]}"
+            f"Bunny create video failed ({create.status_code}): {create.text[:300]}"
         )
 
-    return f"https://{cdn}/{path.lstrip('/')}"
+    data = create.json() if create.content else {}
+    guid = str(data.get("guid") or "")
+    if not guid:
+        raise BunnyUploadError("Bunny did not return a video GUID.")
 
-
-def upload_video(file_obj) -> str:
-    name = _safe_name(getattr(file_obj, "name", "") or "video.mp4", ".mp4")
-    path = f"away-videos/videos/{name}"
-    data = file_obj.read()
-    if not data:
+    if hasattr(file_obj, "seek"):
+        file_obj.seek(0)
+    body = file_obj.read()
+    if not body:
         raise BunnyUploadError("Empty video file.")
-    ctype = getattr(file_obj, "content_type", None) or "video/mp4"
-    return _put(path, data, ctype)
+
+    put_url = f"https://video.bunnycdn.com/library/{library_id}/videos/{guid}"
+    try:
+        put = requests.put(
+            put_url,
+            headers={
+                **_headers(api_key),
+                "Content-Type": "application/octet-stream",
+            },
+            data=body,
+            timeout=600,
+        )
+    except requests.RequestException as exc:
+        raise BunnyUploadError(f"Network error uploading video: {exc}") from exc
+
+    if put.status_code not in (200, 201):
+        raise BunnyUploadError(
+            f"Bunny upload failed ({put.status_code}): {put.text[:300]}"
+        )
+
+    # MP4 after encode; original works early if library allows it
+    playback = f"https://{cdn}/{guid}/play_720p.mp4"
+    thumb = f"https://{cdn}/{guid}/thumbnail.jpg"
+    return playback, thumb
 
 
 def upload_image(file_obj) -> str:
-    name = _safe_name(getattr(file_obj, "name", "") or "thumb.jpg", ".jpg")
-    path = f"away-videos/thumbnails/{name}"
-    data = file_obj.read()
-    if not data:
-        raise BunnyUploadError("Empty image file.")
-    ctype = getattr(file_obj, "content_type", None) or "image/jpeg"
-    return _put(path, data, ctype)
+    """Thumbnails: optional local-only fallback (Stream generates thumbs)."""
+    raise BunnyUploadError("Use video file upload; Stream generates thumbnails.")

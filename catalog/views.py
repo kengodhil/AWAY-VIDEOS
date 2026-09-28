@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .bunny_upload import BunnyUploadError, upload_image, upload_video
+from .bunny_upload import BunnyUploadError, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
@@ -245,34 +245,22 @@ def studio_add_video(request):
         video = form.save(commit=False)
         video_file = request.FILES.get("video_file")
         thumb_file = request.FILES.get("thumbnail")
-        pasted_video = (form.cleaned_data.get("video_cdn") or "").strip()
-        pasted_thumb = (form.cleaned_data.get("thumbnail_cdn") or "").strip()
 
         try:
-            if pasted_video:
-                video.video_cdn = pasted_video
-                video.video_file = None
-            elif video_file and getattr(settings, "USE_BUNNY", False):
-                if hasattr(video_file, "seek"):
-                    video_file.seek(0)
-                video.video_cdn = upload_video(video_file)
-                video.video_file = None
-            elif video_file:
-                video.video_file = video_file
-            else:
-                form.add_error(None, "Upload a video file or paste a Video URL.")
+            if not video_file:
+                form.add_error("video_file", "Choose a video file.")
                 return render(request, "catalog/studio_video_form.html", {"form": form})
 
-            if pasted_thumb:
-                video.thumbnail_cdn = pasted_thumb
+            if getattr(settings, "USE_BUNNY", False):
+                play_url, thumb_url = upload_video(video_file, title=video.title)
+                video.video_cdn = play_url
+                video.thumbnail_cdn = thumb_url
+                video.video_file = None
                 video.thumbnail = None
-            elif thumb_file and getattr(settings, "USE_BUNNY", False):
-                if hasattr(thumb_file, "seek"):
-                    thumb_file.seek(0)
-                video.thumbnail_cdn = upload_image(thumb_file)
-                video.thumbnail = None
-            elif thumb_file:
-                video.thumbnail = thumb_file
+            else:
+                video.video_file = video_file
+                if thumb_file:
+                    video.thumbnail = thumb_file
 
             video.save()
             messages.success(request, "Video saved.")
