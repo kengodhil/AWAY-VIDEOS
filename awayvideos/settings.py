@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# ─── Bunny Stream ────────────────────────────────────────────────────────────
 BUNNY_STREAM_LIBRARY_ID = (os.getenv("BUNNY_STREAM_LIBRARY_ID") or "").strip()
 BUNNY_STREAM_API_KEY = (os.getenv("BUNNY_STREAM_API_KEY") or "").strip()
 BUNNY_STREAM_CDN_HOSTNAME = (os.getenv("BUNNY_STREAM_CDN_HOSTNAME") or "").strip()
@@ -94,6 +93,10 @@ WSGI_APPLICATION = "awayvideos.wsgi.application"
 _database_url = (os.getenv("DATABASE_URL") or "").strip().strip("'\"")
 if _database_url.startswith("postgres"):
     tmp_postgres = urlparse(_database_url)
+    _opts = dict(parse_qsl(tmp_postgres.query))
+    # Neon closes idle SSL sockets; avoid long-lived pooled connections
+    if "sslmode" not in _opts:
+        _opts["sslmode"] = "require"
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -102,8 +105,9 @@ if _database_url.startswith("postgres"):
             "PASSWORD": tmp_postgres.password,
             "HOST": tmp_postgres.hostname,
             "PORT": tmp_postgres.port or 5432,
-            "OPTIONS": dict(parse_qsl(tmp_postgres.query)),
-            "CONN_MAX_AGE": 600,
+            "OPTIONS": _opts,
+            "CONN_MAX_AGE": 0,
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 else:

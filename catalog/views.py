@@ -5,13 +5,14 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db import close_old_connections
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .bunny_upload import BunnyUploadError, upload_video
+from .bunny_upload import BunnyUploadError, delete_stream_video, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
@@ -219,6 +220,7 @@ def studio_logout(request):
 @login_required(login_url="/studio/login/")
 @staff_required
 def studio_dashboard(request):
+    close_old_connections()
     videos = list(Video.objects.all())
     payments = list(Payment.objects.select_related("video")[:50])
     payments_count = Payment.objects.count()
@@ -240,11 +242,11 @@ def studio_dashboard(request):
 @login_required(login_url="/studio/login/")
 @staff_required
 def studio_add_video(request):
+    close_old_connections()
     form = VideoForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         video = form.save(commit=False)
         video_file = request.FILES.get("video_file")
-        thumb_file = request.FILES.get("thumbnail")
 
         try:
             if not video_file:
@@ -253,14 +255,13 @@ def studio_add_video(request):
 
             if getattr(settings, "USE_BUNNY", False):
                 play_url, thumb_url = upload_video(video_file, title=video.title)
+                close_old_connections()
                 video.video_cdn = play_url
                 video.thumbnail_cdn = thumb_url
                 video.video_file = None
                 video.thumbnail = None
             else:
                 video.video_file = video_file
-                if thumb_file:
-                    video.thumbnail = thumb_file
 
             video.save()
             messages.success(request, "Video saved.")
@@ -279,9 +280,13 @@ def studio_add_video(request):
 @staff_required
 @require_POST
 def studio_delete_video(request, pk):
+    close_old_connections()
     video = get_object_or_404(Video, pk=pk)
     title = video.title
+    cdn = video.video_cdn or ""
     video.delete()
+    if cdn:
+        delete_stream_video(cdn)
     messages.success(request, f'Deleted "{title}".')
     return redirect("studio_dashboard")
 

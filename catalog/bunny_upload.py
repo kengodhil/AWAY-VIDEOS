@@ -1,7 +1,9 @@
-"""Upload videos to Bunny Stream; return playable CDN + thumbnail URLs."""
+"""Upload / delete videos on Bunny Stream."""
 from __future__ import annotations
 
+import re
 import time
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -28,9 +30,50 @@ def _headers(api_key: str) -> dict:
     return {"AccessKey": api_key, "Accept": "application/json"}
 
 
+def guid_from_url(url: str) -> str:
+    """Extract Stream video GUID from a CDN URL path."""
+    if not url:
+        return ""
+    path = urlparse(url).path.strip("/")
+    parts = path.split("/")
+    if not parts:
+        return ""
+    # https://vz-xxx.b-cdn.net/{guid}/play_720p.mp4
+    candidate = parts[0]
+    if re.fullmatch(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        candidate,
+    ):
+        return candidate
+    return ""
+
+
+def delete_stream_video(guid_or_url: str) -> None:
+    """Delete a video from Bunny Stream library (best-effort)."""
+    try:
+        library_id, api_key, _cdn = _cfg()
+    except BunnyUploadError:
+        return
+
+    guid = guid_or_url.strip()
+    if "/" in guid or guid.startswith("http"):
+        guid = guid_from_url(guid)
+    if not guid:
+        return
+
+    url = f"https://video.bunnycdn.com/library/{library_id}/videos/{guid}"
+    try:
+        requests.delete(url, headers=_headers(api_key), timeout=30)
+    except requests.RequestException:
+        pass
+
+
 def _get_video(library_id: str, api_key: str, guid: str) -> dict:
     url = f"https://video.bunnycdn.com/library/{library_id}/videos/{guid}"
-    r = requests.get(url, headers=_headers(api_key), timeout=30)
+    try:
+        r = requests.get(url, headers=_headers(api_key), timeout=30)
+    except requests.RequestException:
+        return {}
     if r.status_code != 200:
         return {}
     try:
@@ -40,8 +83,6 @@ def _get_video(library_id: str, api_key: str, guid: str) -> dict:
 
 
 def _play_urls(library_id: str, api_key: str, cdn: str, guid: str) -> tuple[str, str]:
-    """Resolve best playback + thumbnail URL after upload/encode."""
-    # Prefer API play data when available
     play_api = f"https://video.bunnycdn.com/library/{library_id}/videos/{guid}/play"
     try:
         r = requests.get(play_api, headers=_headers(api_key), timeout=30)
@@ -54,7 +95,6 @@ def _play_urls(library_id: str, api_key: str, cdn: str, guid: str) -> tuple[str,
 
             play = original or ""
             if not play and fallback:
-                # fallbackUrl is a prefix for MP4 renditions
                 play = fallback.rstrip("/") + "/play_720p.mp4"
             if not play and playlist:
                 play = playlist
@@ -66,15 +106,12 @@ def _play_urls(library_id: str, api_key: str, cdn: str, guid: str) -> tuple[str,
         pass
 
     info = _get_video(library_id, api_key, guid)
-    status = info.get("status")
-    # 4 = finished encoding
-    if status == 4 or info.get("hasMP4Fallback"):
+    if info.get("status") == 4 or info.get("hasMP4Fallback"):
         return (
             f"https://{cdn}/{guid}/play_720p.mp4",
             f"https://{cdn}/{guid}/thumbnail.jpg",
         )
 
-    # Early play: original file (enable "Keep original" / early play in library)
     return (
         f"https://{cdn}/{guid}/original",
         f"https://{cdn}/{guid}/thumbnail.jpg",
@@ -82,7 +119,6 @@ def _play_urls(library_id: str, api_key: str, cdn: str, guid: str) -> tuple[str,
 
 
 def upload_video(file_obj, title: str = "AWAY video") -> tuple[str, str]:
-    """Create Stream video + upload bytes. Returns (playback_url, thumbnail_url)."""
     library_id, api_key, cdn = _cfg()
 
     create_url = f"https://video.bunnycdn.com/library/{library_id}/videos"
@@ -114,18 +150,14 @@ def upload_video(file_obj, title: str = "AWAY video") -> tuple[str, str]:
     body = file_obj.read()
     if not body:
         raise BunnyUploadError("Empty video file.")
-    size = len(body)
-    if size < 1000:
+    if len(body) < 1000:
         raise BunnyUploadError("Video file is too small or corrupt.")
 
     put_url = f"https://video.bunnycdn.com/library/{library_id}/videos/{guid}"
     try:
         put = requests.put(
             put_url,
-            headers={
-                **_headers(api_key),
-                "Content-Type": "application/octet-stream",
-            },
+            headers={**_headers(api_key), "Content-Type": "application/octet-stream"},
             data=body,
             timeout=600,
         )
@@ -137,7 +169,6 @@ def upload_video(file_obj, title: str = "AWAY video") -> tuple[str, str]:
             f"Bunny upload failed ({put.status_code}): {put.text[:300]}"
         )
 
-    # Wait for encode / original availability (status 4 = finished)
     for _ in range(24):
         info = _get_video(library_id, api_key, guid)
         st = info.get("status")
@@ -146,9 +177,8 @@ def upload_video(file_obj, title: str = "AWAY video") -> tuple[str, str]:
             break
         if st in (5, 6):
             raise BunnyUploadError(
-                f"Bunny processing failed (status={st}). Check file format (use MP4 H.264)."
+                f"Bunny processing failed (status={st}). Use MP4 H.264."
             )
         time.sleep(5)
 
-    play, thumb = _play_urls(library_id, api_key, cdn, guid)
-    return play, thumb
+    return _play_urls(library_id, api_key, cdn, guid)
