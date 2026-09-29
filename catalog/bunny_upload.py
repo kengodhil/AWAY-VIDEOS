@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
@@ -31,10 +32,11 @@ def _cfg():
 
 def _safe_name(name: str, fallback_ext: str) -> str:
     base = Path(name or "file").name
-    base = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip(".-") or "file"
-    if "." not in base:
-        base = f"{base}{fallback_ext}"
-    return f"{uuid.uuid4().hex[:12]}-{base}"
+    # Keep extension only — avoid huge/odd original filenames
+    ext = Path(base).suffix.lower() or fallback_ext
+    if ext not in {".mp4", ".webm", ".mov", ".jpg", ".jpeg", ".png", ".webp"}:
+        ext = fallback_ext
+    return f"{uuid.uuid4().hex}{ext}"
 
 
 def _content_type(name: str, default: str) -> str:
@@ -69,6 +71,38 @@ def _file_body(file_obj):
     return file_obj, False
 
 
+def _storage_exists(zone: str, key: str, host: str, path: str) -> bool:
+    url = f"https://{host}/{zone}/{path.lstrip('/')}"
+    try:
+        r = requests.head(url, headers={"AccessKey": key}, timeout=30)
+        if r.status_code == 200:
+            return True
+        # Some regions only support GET for existence
+        r = requests.get(url, headers={"AccessKey": key}, timeout=30, stream=True)
+        ok = r.status_code == 200
+        r.close()
+        return ok
+    except requests.RequestException:
+        return False
+
+
+def _cdn_reachable(cdn_url: str) -> bool:
+    try:
+        r = requests.head(cdn_url, timeout=30, allow_redirects=True)
+        if r.status_code == 200:
+            return True
+        # Some CDNs disallow HEAD — try range GET
+        r = requests.get(
+            cdn_url,
+            headers={"Range": "bytes=0-1"},
+            timeout=30,
+            allow_redirects=True,
+        )
+        return r.status_code in (200, 206)
+    except requests.RequestException:
+        return False
+
+
 def _put(path: str, file_obj, content_type: str) -> str:
     zone, key, cdn, host = _cfg()
     url = f"https://{host}/{zone}/{path.lstrip('/')}"
@@ -96,13 +130,35 @@ def _put(path: str, file_obj, content_type: str) -> str:
         raise BunnyUploadError(
             f"Bunny upload failed ({resp.status_code}): {resp.text[:300]}"
         )
-    return f"https://{cdn}/{path.lstrip('/')}"
+
+    # Confirm object landed in THIS storage zone
+    if not _storage_exists(zone, key, host, path):
+        raise BunnyUploadError(
+            "Upload reported OK but file not found in storage. "
+            "Check BUNNY_STORAGE_HOST matches your zone region "
+            "(e.g. jh.storage.bunnycdn.com for Johannesburg)."
+        )
+
+    cdn_url = f"https://{cdn}/{path.lstrip('/')}"
+
+    # Pull zone can lag a second; retry briefly
+    for _ in range(6):
+        if _cdn_reachable(cdn_url):
+            return cdn_url
+        time.sleep(1)
+
+    raise BunnyUploadError(
+        f"File is in storage but CDN returned 404: {cdn_url}. "
+        "In Bunny dashboard: Pull Zone → Origin must be type "
+        "'Bunny Storage Zone' and linked to the SAME storage zone. "
+        "Disable Token Authentication on the Pull Zone for public play."
+    )
 
 
 def upload_video(file_obj, title: str = "") -> tuple[str, str]:
-    """Upload MP4 to Storage. Returns (cdn_url, empty_thumb). Instant play."""
+    """Upload MP4 to Storage root path videos/. Instant CDN play."""
     name = _safe_name(getattr(file_obj, "name", "") or "video.mp4", ".mp4")
-    path = f"away-videos/videos/{name}"
+    path = f"videos/{name}"
     ctype = _content_type(name, "video/mp4")
     size = getattr(file_obj, "size", None)
     if size is not None and size < 1000:
@@ -113,22 +169,20 @@ def upload_video(file_obj, title: str = "") -> tuple[str, str]:
 
 def upload_image(file_obj) -> str:
     name = _safe_name(getattr(file_obj, "name", "") or "thumb.jpg", ".jpg")
-    path = f"away-videos/thumbnails/{name}"
+    path = f"thumbnails/{name}"
     ctype = _content_type(name, "image/jpeg")
     return _put(path, file_obj, ctype)
 
 
 def delete_storage_object(url: str) -> None:
-    """Best-effort delete from Bunny Storage."""
     if not url:
         return
     try:
-        zone, key, cdn, host = _cfg()
+        zone, key, _cdn, host = _cfg()
     except BunnyUploadError:
         return
 
     path = urlparse(url).path.lstrip("/")
-    # CDN URL is https://cdn-host/path — path is storage path
     if not path:
         return
     api = f"https://{host}/{zone}/{path}"
