@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .bunny_upload import BunnyUploadError, delete_storage_object, upload_image, upload_video
+from .b2_upload import B2UploadError, delete_storage_object, upload_image, upload_video
 from .forms import AddAdminForm, PayForm, StudioLoginForm, VideoForm
 from .models import Payment, Video
 from .snippe import SnippeClient, SnippeError, is_completed
@@ -254,7 +254,7 @@ def studio_add_video(request):
                 form.add_error("video_file", "Choose a video file.")
                 return render(request, "catalog/studio_video_form.html", {"form": form})
 
-            if getattr(settings, "USE_BUNNY", False):
+            if getattr(settings, "USE_B2", False):
                 play_url, _ = upload_video(video_file, title=video.title)
                 video.video_cdn = play_url
                 video.video_file = None
@@ -273,7 +273,7 @@ def studio_add_video(request):
             video.save()
             messages.success(request, "Video saved.")
             return redirect("studio_dashboard")
-        except BunnyUploadError as exc:
+        except B2UploadError as exc:
             messages.error(request, f"Upload failed: {exc}")
             form.add_error(None, str(exc))
         except Exception as exc:

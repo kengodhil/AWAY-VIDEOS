@@ -37,16 +37,19 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
 ]
 
-# ─── Bunny Storage + Pull Zone CDN ───────────────────────────────────────────
-BUNNY_STORAGE_ZONE = (os.getenv("BUNNY_STORAGE_ZONE") or "").strip()
-BUNNY_STORAGE_API_KEY = (os.getenv("BUNNY_STORAGE_API_KEY") or "").strip()
-BUNNY_CDN_HOSTNAME = (os.getenv("BUNNY_CDN_HOSTNAME") or "").strip()
-BUNNY_STORAGE_HOST = (os.getenv("BUNNY_STORAGE_HOST") or "storage.bunnycdn.com").strip()
-USE_BUNNY = bool(BUNNY_STORAGE_ZONE and BUNNY_STORAGE_API_KEY and BUNNY_CDN_HOSTNAME)
+# ─── Backblaze B2 ────────────────────────────────────────────────────────────
+B2_KEY_ID = (os.getenv("B2_KEY_ID") or "").strip()
+B2_APPLICATION_KEY = (os.getenv("B2_APPLICATION_KEY") or "").strip()
+B2_BUCKET_NAME = (os.getenv("B2_BUCKET_NAME") or "").strip()
+B2_REGION = (os.getenv("B2_REGION") or "").strip()
+B2_ENDPOINT_URL = (os.getenv("B2_ENDPOINT_URL") or "").strip()
+B2_PUBLIC_BASE_URL = (os.getenv("B2_PUBLIC_BASE_URL") or "").strip()
+USE_B2 = bool(B2_KEY_ID and B2_APPLICATION_KEY and B2_BUCKET_NAME)
 
-if USE_BUNNY:
-    _cdn = BUNNY_CDN_HOSTNAME.replace("https://", "").replace("http://", "").rstrip("/")
-    MEDIA_URL = f"https://{_cdn}/"
+if USE_B2 and B2_PUBLIC_BASE_URL:
+    MEDIA_URL = B2_PUBLIC_BASE_URL.rstrip("/") + "/"
+elif USE_B2 and B2_REGION:
+    MEDIA_URL = f"https://{B2_BUCKET_NAME}.s3.{B2_REGION}.backblazeb2.com/"
 else:
     MEDIA_URL = "/media/"
 
